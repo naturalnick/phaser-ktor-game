@@ -3,9 +3,8 @@ import {
 	CameraConfig,
 	CameraController,
 } from "../controllers/CameraController";
-import { Player } from "../entities/Player";
-import { ChatUI } from "../gui/ChatUI";
-import { InventoryUI } from "../gui/InventoryUI";
+import { MainPlayer } from "../entities/MainPlayer";
+import { WorldItem } from "../entities/WorldItem";
 import { MapManager } from "../managers/MapManager";
 import { UIManager } from "../managers/UIManager";
 import { WebSocketService } from "../services/Sockets";
@@ -14,10 +13,9 @@ export class Game extends Scene {
 	private webSocketService!: WebSocketService;
 	private cameraController!: CameraController;
 	private mapManager!: MapManager;
-	private player!: Player;
+	private player!: MainPlayer;
 	private uiManager!: UIManager;
-	private chatUI!: ChatUI;
-	private inventoryUI!: InventoryUI;
+	private worldItems: WorldItem[] = [];
 
 	constructor() {
 		super("Game");
@@ -56,11 +54,16 @@ export class Game extends Scene {
 						: mapBounds.height / 2,
 			};
 
-			this.player = new Player(this, playerPos.x, playerPos.y);
-
 			this.uiManager = new UIManager(this, {
 				bounds: { width: mapBounds.width, height: mapBounds.height },
 			});
+
+			this.player = new MainPlayer(
+				this,
+				playerPos.x,
+				playerPos.y,
+				this.uiManager
+			);
 
 			this.webSocketService = new WebSocketService(this, this.uiManager);
 			this.webSocketService.initializeConnection(
@@ -84,24 +87,10 @@ export class Game extends Scene {
 			// );
 			// exitTrigger.addOverlapWith(this.player.getSprite());
 
-			this.chatUI = new ChatUI(
-				this,
-				{
-					width: 300,
-					height: 200,
-				},
-				this.webSocketService
-			);
+			this.uiManager.initializeChatUI(this.webSocketService);
 
-			this.uiManager.getUIContainer().add(this.chatUI.getContainer());
-
-			this.inventoryUI = new InventoryUI(this);
-			this.uiManager
-				.getUIContainer()
-				.add(this.inventoryUI.getContainer());
+			this.createTestItems();
 			this.uiManager.updateIgnoreList();
-			this.inventoryUI.setItem(0, "shroom", 4);
-			this.inventoryUI.setItem(1, "shroom", 1);
 
 			this.mapManager.setupPlayerTransitions(this.player.getSprite());
 
@@ -125,9 +114,6 @@ export class Game extends Scene {
 
 			this.scale.on("resize", (gameSize: Phaser.Structs.Size) => {
 				this.cameraController.setupCamera(cameraConfig);
-
-				this.chatUI.handleResize(gameSize);
-				this.inventoryUI.handleResize(gameSize);
 			});
 
 			this.physics.world.setBounds(
@@ -155,6 +141,19 @@ export class Game extends Scene {
 				this.mapManager.getCurrentMapId()!
 			);
 		}
+	}
+
+	private createTestItems(): void {
+		const positions = [
+			{ x: 100, y: 100 },
+			{ x: 200, y: 150 },
+			{ x: 300, y: 200 },
+		];
+
+		positions.forEach((pos) => {
+			const worldItem = new WorldItem(this, pos.x, pos.y, "shroom");
+			this.worldItems.push(worldItem);
+		});
 	}
 
 	destroy(): void {

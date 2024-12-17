@@ -1,23 +1,17 @@
-// src/entities/Player.ts
-import { Scene, Types } from "phaser";
+import { Scene } from "phaser";
 
-export class Player {
-	private sprite: Phaser.Physics.Arcade.Sprite;
-	private cursors: Types.Input.Keyboard.CursorKeys;
-	private scene: Scene;
+export abstract class BasePlayer {
+	protected scene: Scene;
+	protected sprite: Phaser.Physics.Arcade.Sprite;
 
 	constructor(scene: Scene, x: number, y: number) {
 		this.scene = scene;
 		this.sprite = scene.physics.add.sprite(x, y, "player");
 		this.sprite.setCollideWorldBounds(true);
-
-		const keys = scene.input.keyboard?.createCursorKeys();
-		if (keys) this.cursors = keys;
-
 		this.createAnimations();
 	}
 
-	private createAnimations(): void {
+	protected createAnimations(): void {
 		if (!this.scene.anims.exists("left")) {
 			this.scene.anims.create({
 				key: "left",
@@ -51,34 +45,13 @@ export class Player {
 		}
 	}
 
-	public update(): void {
-		if (!this.cursors || !this.sprite.body) return;
-
-		if (this.cursors.left.isDown) {
-			this.sprite.setVelocityX(-160);
-			this.sprite.anims.play("left", true);
-		} else if (this.cursors.right.isDown) {
-			this.sprite.setVelocityX(160);
-			this.sprite.anims.play("right", true);
-		} else {
-			this.sprite.setVelocityX(0);
-			this.sprite.anims.play("turn");
-		}
-
-		if (this.cursors.up.isDown) {
-			this.sprite.setVelocityY(-160);
-		} else if (this.cursors.down.isDown) {
-			this.sprite.setVelocityY(160);
-		} else {
-			this.sprite.setVelocityY(0);
-		}
-	}
-
 	public getSprite(): Phaser.Physics.Arcade.Sprite {
 		return this.sprite;
 	}
 
-	public getVelocity(): Phaser.Math.Vector2 {
-		return this.sprite.body?.velocity ?? new Phaser.Math.Vector2();
+	public abstract update(): void;
+
+	public destroy(): void {
+		this.sprite.destroy();
 	}
 }
