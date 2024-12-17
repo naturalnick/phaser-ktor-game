@@ -2,7 +2,7 @@ import { Game, Types } from "phaser";
 import { Boot } from "./scenes/Boot";
 import { FadeTransition } from "./scenes/FadeTransition";
 import { Game as MainGame } from "./scenes/Game";
-import { GameOver } from "./scenes/GameOver";
+
 import { MainMenu } from "./scenes/MainMenu";
 import { Preloader } from "./scenes/Preloader";
 
@@ -24,7 +24,7 @@ const config: Types.Core.GameConfig = {
 			debug: true,
 		},
 	},
-	scene: [Boot, Preloader, MainMenu, MainGame, FadeTransition, GameOver],
+	scene: [Boot, Preloader, MainMenu, MainGame, FadeTransition],
 };
 
 export default new Game(config);

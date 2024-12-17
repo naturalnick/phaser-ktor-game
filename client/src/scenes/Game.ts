@@ -5,6 +5,7 @@ import {
 } from "../controllers/CameraController";
 import { Player } from "../entities/Player";
 import { ChatUI } from "../gui/ChatUI";
+import { InventoryUI } from "../gui/InventoryUI";
 import { MapManager } from "../managers/MapManager";
 import { UIManager } from "../managers/UIManager";
 import { WebSocketService } from "../services/Sockets";
@@ -16,6 +17,7 @@ export class Game extends Scene {
 	private player!: Player;
 	private uiManager!: UIManager;
 	private chatUI!: ChatUI;
+	private inventoryUI!: InventoryUI;
 
 	constructor() {
 		super("Game");
@@ -27,6 +29,8 @@ export class Game extends Scene {
 			"https://labs.phaser.io/assets/sprites/dude.png",
 			{ frameWidth: 32, frameHeight: 48 }
 		);
+		this.load.image("shroom", "https://p.novaskin.me/3123273216.png");
+
 		this.mapManager = new MapManager(this);
 		this.mapManager.preload();
 	}
@@ -54,7 +58,9 @@ export class Game extends Scene {
 
 			this.player = new Player(this, playerPos.x, playerPos.y);
 
-			this.uiManager = new UIManager(this);
+			this.uiManager = new UIManager(this, {
+				bounds: { width: mapBounds.width, height: mapBounds.height },
+			});
 
 			this.webSocketService = new WebSocketService(this, this.uiManager);
 			this.webSocketService.initializeConnection(
@@ -81,13 +87,21 @@ export class Game extends Scene {
 			this.chatUI = new ChatUI(
 				this,
 				{
-					width: Math.min(300, this.scale.width * 0.3),
-					height: Math.min(200, this.scale.height * 0.3),
+					width: 300,
+					height: 200,
 				},
 				this.webSocketService
 			);
 
 			this.uiManager.getUIContainer().add(this.chatUI.getContainer());
+
+			this.inventoryUI = new InventoryUI(this);
+			this.uiManager
+				.getUIContainer()
+				.add(this.inventoryUI.getContainer());
+			this.uiManager.updateIgnoreList();
+			this.inventoryUI.setItem(0, "shroom", 4);
+			this.inventoryUI.setItem(1, "shroom", 1);
 
 			this.mapManager.setupPlayerTransitions(this.player.getSprite());
 
@@ -113,6 +127,7 @@ export class Game extends Scene {
 				this.cameraController.setupCamera(cameraConfig);
 
 				this.chatUI.handleResize(gameSize);
+				this.inventoryUI.handleResize(gameSize);
 			});
 
 			this.physics.world.setBounds(
