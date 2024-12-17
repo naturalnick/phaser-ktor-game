@@ -23,11 +23,15 @@ export class InventoryUI extends UIComponent {
 	private slots: InventorySlot[] = [];
 	private selectedSlotIndex: number = 0;
 	private background: Phaser.GameObjects.Rectangle;
+	private dragSprite?: Phaser.GameObjects.Sprite;
+	private dragStartPos = { x: 0, y: 0 };
+	private dragStartSlot: number = -1;
 
 	constructor(scene: Scene, config: InventoryUIConfig = {}) {
 		super(scene);
 
 		const uiCamera = this.scene.cameras.getCamera("uiCamera");
+		console.log(uiCamera?.width, scene.scale.width);
 		if (!uiCamera) throw "No Camera";
 
 		const totalWidth =
@@ -90,7 +94,20 @@ export class InventoryUI extends UIComponent {
 				0xc4a2a4,
 				0.5
 			)
-			.setOrigin(0, 0);
+			.setOrigin(0, 0)
+			.setInteractive();
+
+		background.on("pointerdown", () => {
+			this.selectSlot(index);
+		});
+
+		background.on("pointerover", () => {
+			background.setFillStyle(0xd4b2b4, 0.5);
+		});
+
+		background.on("pointerout", () => {
+			background.setFillStyle(0xc4a2a4, 0.5);
+		});
 
 		container.add(background);
 
@@ -102,16 +119,43 @@ export class InventoryUI extends UIComponent {
 	}
 
 	private setupKeyboardControls(): void {
-		for (let i = 1; i <= Math.min(9, this.config.slots!); i++) {
-			this.scene.input.keyboard?.on(`keydown-${i}`, () => {
-				this.selectSlot(i - 1);
-			});
-		}
+		this.scene.input.keyboard?.on("keydown", (event: KeyboardEvent) => {
+			switch (event.key) {
+				case "1":
+					this.selectSlot(0);
+					break;
+				case "2":
+					this.selectSlot(1);
+					break;
+				case "3":
+					this.selectSlot(2);
+					break;
+				case "4":
+					this.selectSlot(3);
+					break;
+				case "5":
+					this.selectSlot(4);
+					break;
+				case "6":
+					this.selectSlot(5);
+					break;
+				case "7":
+					this.selectSlot(6);
+					break;
+				case "8":
+					this.selectSlot(7);
+					break;
+				case "9":
+					this.selectSlot(8);
+					break;
+			}
+		});
 	}
 
 	public selectSlot(index: number): void {
-		this.deselectSlots();
+		if (index < 0 || index >= this.slots.length) return;
 
+		this.deselectSlots();
 		this.selectedSlotIndex = index;
 		this.slots[index].background.setStrokeStyle(2, 0xffffff);
 	}
@@ -135,14 +179,94 @@ export class InventoryUI extends UIComponent {
 		}
 
 		if (itemKey) {
-			slotData.item = this.scene.add
+			const item = this.scene.add
 				.sprite(4, 4, itemKey)
 				.setOrigin(0, 0)
 				.setDisplaySize(
 					this.config.slotSize! - 8,
 					this.config.slotSize! - 8
+				)
+				.setInteractive({ draggable: true });
+
+			item.setData("slotIndex", slot);
+
+			// Setup drag events
+			item.on("dragstart", (pointer: Phaser.Input.Pointer) => {
+				const uiCamera = this.scene.cameras.getCamera("uiCamera");
+				const xAdjustment = Math.max(
+					0,
+					(this.scene.scale.width - (uiCamera?.width ?? 0)) / 2
 				);
-			slotData.container.add(slotData.item);
+
+				this.dragStartPos = {
+					x: pointer.x,
+					y: pointer.y,
+				};
+				this.dragStartSlot = slot;
+
+				// Create a duplicate sprite for dragging
+				this.dragSprite = this.scene.add
+					.sprite(pointer.x - xAdjustment, pointer.y, itemKey)
+					.setDisplaySize(
+						this.config.slotSize! - 8,
+						this.config.slotSize! - 8
+					)
+					.setDepth(1000);
+
+				// Hide the original item while dragging
+				item.setAlpha(0.5);
+			});
+
+			item.on("drag", (pointer: Phaser.Input.Pointer) => {
+				if (this.dragSprite) {
+					const uiCamera = this.scene.cameras.getCamera("uiCamera");
+					const xAdjustment = Math.max(
+						0,
+						(this.scene.scale.width - (uiCamera?.width ?? 0)) / 2
+					);
+					this.dragSprite.setPosition(
+						pointer.x - xAdjustment,
+						pointer.y
+					);
+				}
+			});
+
+			item.on("dragend", (pointer: Phaser.Input.Pointer) => {
+				const uiCamera = this.scene.cameras.getCamera("uiCamera");
+				const xAdjustment = Math.max(
+					0,
+					(this.scene.scale.width - (uiCamera?.width ?? 0)) / 2
+				);
+				const targetSlot = this.getSlotFromPosition(
+					pointer.x - xAdjustment,
+					pointer.y
+				);
+
+				if (targetSlot !== null && targetSlot !== this.dragStartSlot) {
+					this.scene.events.emit(
+						"moveItems",
+						this.dragStartSlot,
+						targetSlot
+					);
+				} else if (!this.isPointerOverInventory(pointer)) {
+					// Handle dropping outside inventory
+					this.scene.events.emit("itemDropped", this.dragStartSlot);
+
+					this.setItem(this.dragStartSlot, "");
+				}
+
+				// Restore original item visibility
+				item.setAlpha(1);
+
+				// Clean up drag sprite
+				if (this.dragSprite) {
+					this.dragSprite.destroy();
+					this.dragSprite = undefined;
+				}
+			});
+
+			slotData.container.add(item);
+			slotData.item = item;
 
 			if (count > 1) {
 				slotData.count = this.scene.add
@@ -164,6 +288,50 @@ export class InventoryUI extends UIComponent {
 		}
 	}
 
+	private getSlotFromPosition(x: number, y: number): number | null {
+		const inventoryBounds = this.container.getBounds();
+
+		if (!inventoryBounds.contains(x, y)) {
+			return null;
+		}
+
+		// Calculate relative position within inventory
+		const relativeX = x - this.container.x;
+		const relativeY = y - this.container.y;
+
+		// Calculate slot based on position
+		const slotWidth = this.config.slotSize! + this.config.spacing!;
+		const slotX = Math.floor(
+			(relativeX - this.config.padding!) / slotWidth
+		);
+
+		// Check if within valid slot bounds
+		if (
+			slotX >= 0 &&
+			slotX < this.config.slots! &&
+			relativeY >= this.config.padding! &&
+			relativeY <= this.config.padding! + this.config.slotSize!
+		) {
+			return slotX;
+		}
+
+		return null;
+	}
+
+	private isPointerOverInventory(pointer: Phaser.Input.Pointer): boolean {
+		const inventoryBounds = this.container.getBounds();
+		const uiCamera = this.scene.cameras.getCamera("uiCamera");
+		const xAdjustment = Math.max(
+			0,
+			(this.scene.scale.width - (uiCamera?.width ?? 0)) / 2
+		);
+		inventoryBounds.setSize(
+			inventoryBounds.width + 32,
+			inventoryBounds.height + 32
+		);
+		return inventoryBounds.contains(pointer.x - xAdjustment, pointer.y);
+	}
+
 	public getSelectedSlot(): number {
 		return this.selectedSlotIndex;
 	}
@@ -179,6 +347,16 @@ export class InventoryUI extends UIComponent {
 	}
 
 	public destroy(): void {
+		if (this.dragSprite) {
+			this.dragSprite.destroy();
+		}
+		this.slots.forEach((slot) => {
+			if (slot.item) {
+				slot.item.removeAllListeners();
+			}
+			slot.background.removeAllListeners();
+			slot.background.disableInteractive();
+		});
 		this.scene.input.keyboard?.off("keydown");
 		this.container.destroy();
 	}

@@ -42,6 +42,8 @@ export class MainPlayer extends BasePlayer {
 		this.setupItemInteraction();
 		this.updateUI();
 		scene.events.on("playerDamaged", this.damage, this);
+		scene.events.on("itemDropped", this.tryDropItem, this);
+		scene.events.on("moveItems", this.handleMoveItems, this);
 	}
 
 	public update(): void {
@@ -107,6 +109,11 @@ export class MainPlayer extends BasePlayer {
 		this.useKey.on("down", () => this.tryUseItem());
 	}
 
+	private handleMoveItems(slotIndexFrom: number, slotIndexTo: number) {
+		this.inventory.moveItems(slotIndexFrom, slotIndexTo);
+		this.updateInventoryUI();
+	}
+
 	private tryPickupItem(): void {
 		const nearbyItems = this.scene.physics.overlapCirc(
 			this.sprite.x,
@@ -129,9 +136,12 @@ export class MainPlayer extends BasePlayer {
 		this.damage(10);
 	}
 
-	private tryDropItem(): void {
+	private tryDropItem(slotIndex?: number): void {
 		const selectedSlot = this.uiManager.getInventoryUI().getSelectedSlot();
-		const droppedItemKey = this.inventory.removeItem(selectedSlot, 1);
+		const droppedItemKey = this.inventory.removeItem(
+			slotIndex || selectedSlot,
+			1
+		);
 
 		if (droppedItemKey) {
 			new WorldItem(
@@ -193,5 +203,9 @@ export class MainPlayer extends BasePlayer {
 		this.interactKey.destroy();
 		this.dropKey.destroy();
 		this.useKey.destroy();
+		this.wKey.destroy();
+		this.aKey.destroy();
+		this.sKey.destroy();
+		this.dKey.destroy();
 	}
 }

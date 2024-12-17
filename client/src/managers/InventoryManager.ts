@@ -1,3 +1,4 @@
+import { Scene } from "phaser";
 import { ITEM_DATABASE, ItemData } from "../types/Item";
 
 export interface InventorySlotData {
@@ -6,9 +7,12 @@ export interface InventorySlotData {
 }
 
 export class InventoryManager {
+	private scene: Scene;
+	public id: string;
 	private slots: InventorySlotData[];
 
 	constructor(size: number = 10) {
+		this.id = Math.floor(Math.random() * 100).toString();
 		this.slots = Array(size)
 			.fill(null)
 			.map(() => ({
@@ -43,6 +47,69 @@ export class InventoryManager {
 		}
 
 		return false;
+	}
+
+	public moveItems(slotIndexFrom: number, slotIndexTo: number): void {
+		// Validate indices
+		if (
+			slotIndexFrom < 0 ||
+			slotIndexFrom >= this.slots.length ||
+			slotIndexTo < 0 ||
+			slotIndexTo >= this.slots.length ||
+			slotIndexFrom === slotIndexTo
+		) {
+			return;
+		}
+
+		const fromSlot = this.slots[slotIndexFrom];
+		const toSlot = this.slots[slotIndexTo];
+
+		// If source slot is empty, nothing to move
+		if (!fromSlot.itemKey) {
+			return;
+		}
+
+		// If destination slot is empty, simply move the item
+		if (!toSlot.itemKey) {
+			toSlot.itemKey = fromSlot.itemKey;
+			toSlot.count = fromSlot.count;
+			fromSlot.itemKey = null;
+			fromSlot.count = 0;
+			return;
+		}
+
+		// If both slots have items
+		if (fromSlot.itemKey === toSlot.itemKey) {
+			// Same item type - attempt to stack
+			const itemData = ITEM_DATABASE[toSlot.itemKey];
+			if (itemData.stackable) {
+				const spaceInStack = itemData.maxStack - toSlot.count;
+				const amountToMove = Math.min(fromSlot.count, spaceInStack);
+
+				if (amountToMove > 0) {
+					toSlot.count += amountToMove;
+					fromSlot.count -= amountToMove;
+
+					if (fromSlot.count <= 0) {
+						fromSlot.itemKey = null;
+						fromSlot.count = 0;
+					}
+					return;
+				}
+			}
+		}
+
+		// Different items or unable to stack - swap them
+		const tempItemKey = toSlot.itemKey;
+		const tempCount = toSlot.count;
+
+		toSlot.itemKey = fromSlot.itemKey;
+		toSlot.count = fromSlot.count;
+
+		fromSlot.itemKey = tempItemKey;
+		fromSlot.count = tempCount;
+
+		return;
 	}
 
 	public removeItem(slotIndex: number, count: number = 1): string | null {
