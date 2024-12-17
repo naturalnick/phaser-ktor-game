@@ -119,6 +119,10 @@ export class MapManager {
 		return this.currentMapId;
 	}
 
+	public getCurrentMap(): Phaser.Tilemaps.Tilemap | null {
+		return this.map;
+	}
+
 	public getMapBounds(): { width: number; height: number } | null {
 		if (!this.map) return null;
 		return {

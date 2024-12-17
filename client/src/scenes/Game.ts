@@ -5,6 +5,7 @@ import {
 } from "../controllers/CameraController";
 import { MainPlayer } from "../entities/MainPlayer";
 import { WorldItem } from "../entities/WorldItem";
+import { EnemyManager } from "../managers/EnemyManager";
 import { MapManager } from "../managers/MapManager";
 import { UIManager } from "../managers/UIManager";
 import { WebSocketService } from "../services/Sockets";
@@ -16,6 +17,7 @@ export class Game extends Scene {
 	private player!: MainPlayer;
 	private uiManager!: UIManager;
 	private worldItems: WorldItem[] = [];
+	private enemyManager!: EnemyManager;
 
 	constructor() {
 		super("Game");
@@ -65,6 +67,17 @@ export class Game extends Scene {
 				this.uiManager
 			);
 
+			this.mapManager.setupPlayerTransitions(this.player.getSprite());
+
+			this.enemyManager = new EnemyManager(this, this.mapManager);
+			this.enemyManager.createEnemiesFromMap(
+				this.mapManager.getCurrentMap()!
+			);
+			this.enemyManager.setupCollisions(
+				this.player.getSprite(),
+				this.mapManager.getCollisionLayers()
+			);
+
 			this.webSocketService = new WebSocketService(this, this.uiManager);
 			this.webSocketService.initializeConnection(
 				playerPos.x,
@@ -92,12 +105,17 @@ export class Game extends Scene {
 			this.createTestItems();
 			this.uiManager.updateIgnoreList();
 
-			this.mapManager.setupPlayerTransitions(this.player.getSprite());
-
 			const collisionLayers = this.mapManager.getCollisionLayers();
 			collisionLayers.forEach((layer) => {
 				this.physics.add.collider(this.player.getSprite(), layer);
 			});
+
+			this.physics.world.setBounds(
+				-32,
+				-32,
+				mapBounds.width + 64,
+				mapBounds.height + 64
+			);
 
 			const cameraConfig: CameraConfig = {
 				lerp: 0.1,
@@ -115,18 +133,12 @@ export class Game extends Scene {
 			this.scale.on("resize", (gameSize: Phaser.Structs.Size) => {
 				this.cameraController.setupCamera(cameraConfig);
 			});
-
-			this.physics.world.setBounds(
-				-32,
-				-32,
-				mapBounds.width + 64,
-				mapBounds.height + 64
-			);
 		}
 	}
 
 	update(): void {
 		this.player?.update();
+		this.enemyManager?.update();
 
 		if (
 			this.player &&
@@ -145,7 +157,7 @@ export class Game extends Scene {
 
 	private createTestItems(): void {
 		const positions = [
-			{ x: 100, y: 100 },
+			{ x: 600, y: 600 },
 			{ x: 200, y: 150 },
 			{ x: 300, y: 200 },
 		];
@@ -158,5 +170,6 @@ export class Game extends Scene {
 
 	destroy(): void {
 		this.webSocketService?.destroy();
+		this.enemyManager?.destroy();
 	}
 }

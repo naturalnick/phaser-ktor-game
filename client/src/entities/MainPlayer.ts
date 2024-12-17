@@ -5,6 +5,8 @@ import { ITEM_DATABASE } from "../types/Item";
 import { BasePlayer } from "./Player";
 import { WorldItem } from "./WorldItem";
 
+type FacingDirection = "UP" | "DOWN" | "LEFT" | "RIGHT";
+
 export class MainPlayer extends BasePlayer {
 	private cursors: Types.Input.Keyboard.CursorKeys;
 	private inventory: InventoryManager;
@@ -12,6 +14,11 @@ export class MainPlayer extends BasePlayer {
 	private interactKey: Phaser.Input.Keyboard.Key;
 	private dropKey: Phaser.Input.Keyboard.Key;
 	private useKey: Phaser.Input.Keyboard.Key;
+	private wKey: Phaser.Input.Keyboard.Key;
+	private aKey: Phaser.Input.Keyboard.Key;
+	private sKey: Phaser.Input.Keyboard.Key;
+	private dKey: Phaser.Input.Keyboard.Key;
+	private facingDirection: FacingDirection = "DOWN";
 
 	private maxHealth: number = 100;
 	private currentHealth: number = 100;
@@ -26,30 +33,39 @@ export class MainPlayer extends BasePlayer {
 			this.interactKey = scene.input.keyboard.addKey("E");
 			this.dropKey = scene.input.keyboard.addKey("Q");
 			this.useKey = scene.input.keyboard.addKey("F");
+			this.wKey = scene.input.keyboard.addKey("W");
+			this.aKey = scene.input.keyboard.addKey("A");
+			this.sKey = scene.input.keyboard.addKey("S");
+			this.dKey = scene.input.keyboard.addKey("D");
 		}
 
 		this.setupItemInteraction();
 		this.updateUI();
+		scene.events.on("playerDamaged", this.damage, this);
 	}
 
 	public update(): void {
 		if (!this.cursors || !this.sprite.body) return;
 
-		if (this.cursors.left.isDown) {
+		if (this.cursors.left.isDown || this.aKey.isDown) {
 			this.sprite.setVelocityX(-160);
 			this.sprite.anims.play("left", true);
-		} else if (this.cursors.right.isDown) {
+			this.facingDirection = "LEFT";
+		} else if (this.cursors.right.isDown || this.dKey.isDown) {
 			this.sprite.setVelocityX(160);
 			this.sprite.anims.play("right", true);
+			this.facingDirection = "RIGHT";
 		} else {
 			this.sprite.setVelocityX(0);
 			this.sprite.anims.play("turn");
 		}
 
-		if (this.cursors.up.isDown) {
+		if (this.cursors.up.isDown || this.wKey.isDown) {
 			this.sprite.setVelocityY(-160);
-		} else if (this.cursors.down.isDown) {
+			this.facingDirection = "UP";
+		} else if (this.cursors.down.isDown || this.sKey.isDown) {
 			this.sprite.setVelocityY(160);
+			this.facingDirection = "DOWN";
 		} else {
 			this.sprite.setVelocityY(0);
 		}
@@ -110,6 +126,7 @@ export class MainPlayer extends BasePlayer {
 				}
 			}
 		}
+		this.damage(10);
 	}
 
 	private tryDropItem(): void {
@@ -117,17 +134,15 @@ export class MainPlayer extends BasePlayer {
 		const droppedItemKey = this.inventory.removeItem(selectedSlot, 1);
 
 		if (droppedItemKey) {
-			const offsetX = Math.random() * 40 - 20;
-			const offsetY = Math.random() * 40 - 20;
-
 			new WorldItem(
 				this.scene,
-				this.sprite.x + offsetX,
-				this.sprite.y + offsetY,
+				this.sprite.x - this.sprite.width / 2,
+				this.sprite.y - this.sprite.height / 2,
 				droppedItemKey
 			);
 
 			this.updateInventoryUI();
+			this.uiManager.updateIgnoreList();
 		}
 	}
 
