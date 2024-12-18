@@ -24,11 +24,7 @@ export class Game extends Scene {
 	}
 
 	preload(): void {
-		this.load.spritesheet(
-			"player",
-			"https://labs.phaser.io/assets/sprites/dude.png",
-			{ frameWidth: 32, frameHeight: 48 }
-		);
+		this.load.image("slime", "assets/sprites/RPG_Monster_024_2.png");
 		this.load.spritesheet(
 			"player2",
 			"assets/sprites/Character_016_Walk.png",

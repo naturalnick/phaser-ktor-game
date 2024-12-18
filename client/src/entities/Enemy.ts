@@ -36,45 +36,16 @@ export class Enemy {
 		this.moveDelay = config.moveDelay || 0;
 		this.detectionRadius = config.detectionRadius || 200;
 
-		this.sprite = scene.physics.add.sprite(config.x, config.y, "player");
+		this.sprite = scene.physics.add.sprite(config.x, config.y, "slime");
+		const collisionCircle = this.sprite.width / 3;
+		const offsetX = (this.sprite.width - collisionCircle * 2) / 2;
+		const offsetY = this.sprite.height - collisionCircle * 2;
+
+		this.sprite.body?.setCircle(collisionCircle, offsetX, offsetY);
+
 		this.sprite.setCollideWorldBounds(true);
 
-		this.createAnimations();
 		this.startMovementCycle();
-	}
-
-	private createAnimations(): void {
-		if (!this.scene.anims.exists("enemy-left")) {
-			this.scene.anims.create({
-				key: "enemy-left",
-				frames: this.scene.anims.generateFrameNumbers("player", {
-					start: 0,
-					end: 3,
-				}),
-				frameRate: 10,
-				repeat: -1,
-			});
-		}
-
-		if (!this.scene.anims.exists("enemy-right")) {
-			this.scene.anims.create({
-				key: "enemy-right",
-				frames: this.scene.anims.generateFrameNumbers("player", {
-					start: 5,
-					end: 8,
-				}),
-				frameRate: 10,
-				repeat: -1,
-			});
-		}
-
-		if (!this.scene.anims.exists("enemy-idle")) {
-			this.scene.anims.create({
-				key: "enemy-idle",
-				frames: [{ key: "player", frame: 4 }],
-				frameRate: 1,
-			});
-		}
 	}
 
 	private startMovementCycle(): void {
@@ -127,7 +98,6 @@ export class Enemy {
 	private stopMoving(): void {
 		this.isMoving = false;
 		this.sprite.setVelocity(0, 0);
-		this.sprite.play("enemy-idle");
 	}
 
 	private moveTowardsTarget(): void {
@@ -154,11 +124,8 @@ export class Enemy {
 			this.sprite.setVelocityY(Math.sin(angle) * this.speed);
 		}
 
-		// Update animation based on current velocity
-		const dx = this.sprite.body?.velocity.x ?? 0;
-		if (Math.abs(dx) > Math.abs(this.sprite.body?.velocity.y ?? 0)) {
-			this.sprite.play(dx > 0 ? "enemy-right" : "enemy-left", true);
-		}
+		// Optional: Flip the sprite horizontally based on movement direction
+		this.sprite.setFlipX((this.sprite.body?.velocity.x ?? 0) > 0);
 	}
 
 	private moveRandomly(): void {
@@ -172,11 +139,8 @@ export class Enemy {
 			this.sprite.setVelocityX(Math.cos(randomAngle) * this.speed);
 			this.sprite.setVelocityY(Math.sin(randomAngle) * this.speed);
 
-			// Update animation based on new direction
-			const dx = Math.cos(randomAngle);
-			if (Math.abs(dx) > Math.abs(Math.sin(randomAngle))) {
-				this.sprite.play(dx > 0 ? "enemy-right" : "enemy-left", true);
-			}
+			// Optional: Flip the sprite horizontally based on movement direction
+			this.sprite.setFlipX(Math.cos(randomAngle) > 0);
 		}
 	}
 
