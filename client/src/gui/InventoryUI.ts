@@ -31,7 +31,6 @@ export class InventoryUI extends UIComponent {
 		super(scene);
 
 		const uiCamera = this.scene.cameras.getCamera("uiCamera");
-		console.log(uiCamera?.width, scene.scale.width);
 		if (!uiCamera) throw "No Camera";
 
 		const totalWidth =
@@ -324,8 +323,8 @@ export class InventoryUI extends UIComponent {
 			(this.scene.scale.width - (uiCamera?.width ?? 0)) / 2
 		);
 		inventoryBounds.setSize(
-			inventoryBounds.width + 32,
-			inventoryBounds.height + 32
+			inventoryBounds.width + 16,
+			inventoryBounds.height + 16
 		);
 		return inventoryBounds.contains(pointer.x - xAdjustment, pointer.y);
 	}

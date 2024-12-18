@@ -12,7 +12,7 @@ export class WorldItem extends Phaser.GameObjects.Container {
 		const itemData = ITEM_DATABASE[itemKey];
 
 		this.sprite = scene.add.sprite(0, 0, itemData.sprite);
-		this.sprite.setDisplaySize(32, 32);
+		this.sprite.setDisplaySize(16, 16);
 		this.sprite.setOrigin(-0.5);
 
 		// if (itemData.scale) {

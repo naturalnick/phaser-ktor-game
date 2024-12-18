@@ -140,7 +140,7 @@ export class ChatUI extends UIComponent {
 
 	private sendMessage(): void {
 		if (this.currentInput.trim()) {
-			const currentMapId = this.scene.data.get("currentMapId") || "map5";
+			const currentMapId = this.scene.data.get("currentMapId") || "map1";
 			console.log(currentMapId);
 			this.webSocketService.sendMessage(this.currentInput, currentMapId);
 

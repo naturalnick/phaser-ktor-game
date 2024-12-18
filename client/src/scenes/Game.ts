@@ -29,6 +29,14 @@ export class Game extends Scene {
 			"https://labs.phaser.io/assets/sprites/dude.png",
 			{ frameWidth: 32, frameHeight: 48 }
 		);
+		this.load.spritesheet(
+			"player2",
+			"assets/sprites/Character_016_Walk.png",
+			{
+				frameWidth: 16,
+				frameHeight: 32,
+			}
+		);
 		this.load.image("shroom", "https://p.novaskin.me/3123273216.png");
 
 		this.mapManager = new MapManager(this);
@@ -41,7 +49,7 @@ export class Game extends Scene {
 			playerPosition?: { x: number; y: number };
 		};
 
-		await this.mapManager.loadMap(sceneData?.targetMap || "map5");
+		await this.mapManager.loadMap(sceneData?.targetMap || "map1");
 		const mapBounds = this.mapManager.getMapBounds();
 
 		if (mapBounds) {
@@ -82,15 +90,15 @@ export class Game extends Scene {
 			this.webSocketService.initializeConnection(
 				playerPos.x,
 				playerPos.y,
-				"map5"
+				"map1"
 			);
 
 			// const exitTrigger = new TransitionTrigger(
 			// 	this,
 			// 	1, // x position
 			// 	1, // y position
-			// 	32, // width
-			// 	32, // height
+			// 	16, // width
+			// 	16, // height
 			// 	{
 			// 		targetMap: "map4",
 			// 		playerPosition: { x: 200, y: 200 },
@@ -111,10 +119,10 @@ export class Game extends Scene {
 			});
 
 			this.physics.world.setBounds(
-				-32,
-				-32,
-				mapBounds.width + 64,
-				mapBounds.height + 64
+				-16,
+				-16,
+				mapBounds.width + 32,
+				mapBounds.height + 32
 			);
 
 			const cameraConfig: CameraConfig = {
@@ -146,7 +154,7 @@ export class Game extends Scene {
 				this.player.getVelocity().y !== 0)
 		) {
 			const sprite = this.player.getSprite();
-			console.log(sprite.x, sprite.y);
+			// console.log(sprite.x, sprite.y);
 			this.webSocketService.sendPosition(
 				sprite.x,
 				sprite.y,

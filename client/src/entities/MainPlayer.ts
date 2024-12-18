@@ -49,27 +49,41 @@ export class MainPlayer extends BasePlayer {
 	public update(): void {
 		if (!this.cursors || !this.sprite.body) return;
 
-		if (this.cursors.left.isDown || this.aKey.isDown) {
+		const downPressed = this.cursors.down.isDown || this.sKey.isDown;
+		const upPressed = this.cursors.up.isDown || this.wKey.isDown;
+		const leftPressed = this.cursors.left.isDown || this.aKey.isDown;
+		const rightPressed = this.cursors.right.isDown || this.dKey.isDown;
+
+		if (leftPressed) {
 			this.sprite.setVelocityX(-160);
 			this.sprite.anims.play("left", true);
 			this.facingDirection = "LEFT";
-		} else if (this.cursors.right.isDown || this.dKey.isDown) {
+		} else if (rightPressed) {
 			this.sprite.setVelocityX(160);
 			this.sprite.anims.play("right", true);
 			this.facingDirection = "RIGHT";
 		} else {
 			this.sprite.setVelocityX(0);
-			this.sprite.anims.play("turn");
 		}
 
-		if (this.cursors.up.isDown || this.wKey.isDown) {
+		if (upPressed) {
 			this.sprite.setVelocityY(-160);
+			if (!leftPressed && !rightPressed) {
+				this.sprite.anims.play("up", true);
+			}
 			this.facingDirection = "UP";
-		} else if (this.cursors.down.isDown || this.sKey.isDown) {
+		} else if (downPressed) {
 			this.sprite.setVelocityY(160);
+			if (!leftPressed && !rightPressed) {
+				this.sprite.anims.play("down", true);
+			}
 			this.facingDirection = "DOWN";
 		} else {
 			this.sprite.setVelocityY(0);
+		}
+
+		if (!upPressed && !downPressed && !leftPressed && !rightPressed) {
+			this.sprite.anims.pause();
 		}
 	}
 
@@ -118,7 +132,7 @@ export class MainPlayer extends BasePlayer {
 		const nearbyItems = this.scene.physics.overlapCirc(
 			this.sprite.x,
 			this.sprite.y,
-			32
+			16
 		);
 
 		for (const body of nearbyItems) {

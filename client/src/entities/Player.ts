@@ -6,16 +6,28 @@ export abstract class BasePlayer {
 
 	constructor(scene: Scene, x: number, y: number) {
 		this.scene = scene;
-		this.sprite = scene.physics.add.sprite(x, y, "player");
+		this.sprite = scene.physics.add.sprite(x, y, "player2");
 		this.sprite.setCollideWorldBounds(true);
+		this.sprite.setDepth(3);
 		this.createAnimations();
 	}
 
 	protected createAnimations(): void {
-		if (!this.scene.anims.exists("left")) {
+		if (!this.scene.anims.exists("up")) {
 			this.scene.anims.create({
-				key: "left",
-				frames: this.scene.anims.generateFrameNumbers("player", {
+				key: "up",
+				frames: this.scene.anims.generateFrameNumbers("player2", {
+					start: 8,
+					end: 11,
+				}),
+				frameRate: 10,
+				repeat: -1,
+			});
+		}
+		if (!this.scene.anims.exists("down")) {
+			this.scene.anims.create({
+				key: "down",
+				frames: this.scene.anims.generateFrameNumbers("player2", {
 					start: 0,
 					end: 3,
 				}),
@@ -23,21 +35,23 @@ export abstract class BasePlayer {
 				repeat: -1,
 			});
 		}
-
-		if (!this.scene.anims.exists("turn")) {
+		if (!this.scene.anims.exists("left")) {
 			this.scene.anims.create({
-				key: "turn",
-				frames: [{ key: "player", frame: 4 }],
-				frameRate: 20,
+				key: "left",
+				frames: this.scene.anims.generateFrameNumbers("player2", {
+					start: 12,
+					end: 15,
+				}),
+				frameRate: 10,
+				repeat: -1,
 			});
 		}
-
 		if (!this.scene.anims.exists("right")) {
 			this.scene.anims.create({
 				key: "right",
-				frames: this.scene.anims.generateFrameNumbers("player", {
-					start: 5,
-					end: 8,
+				frames: this.scene.anims.generateFrameNumbers("player2", {
+					start: 4,
+					end: 7,
 				}),
 				frameRate: 10,
 				repeat: -1,

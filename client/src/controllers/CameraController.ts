@@ -51,6 +51,8 @@ export class CameraController {
 				Math.min(this.scene.scale.width, config.bounds.width),
 				Math.min(this.scene.scale.height, config.bounds.height)
 			);
+
+			this.mainCamera.setZoom(2);
 		}
 
 		if (config?.deadzone) {

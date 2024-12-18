@@ -1,6 +1,20 @@
 import { Scene } from "phaser";
 import { TransitionManager } from "./TransitionManager";
 
+interface Tileset {
+	name: string;
+	key: string;
+}
+
+interface LayerConfig {
+	name: string;
+	tilesets: string[];
+	depth: number;
+	properties: {
+		collides?: boolean;
+	};
+}
+
 export class MapManager {
 	private scene: Scene;
 	private map: Phaser.Tilemaps.Tilemap | null;
@@ -21,8 +35,8 @@ export class MapManager {
 	}
 
 	public preload(): void {
-		this.scene.load.image("tiles", "assets/tilesets/rpg_tileset.png");
-		this.scene.load.image("tiles2", "assets/tilesets/hyptosis_tiles_1.png");
+		this.scene.load.image("tiles", "assets/tilesets/FG_Grounds.png");
+		this.scene.load.image("tiles2", "assets/tilesets/FG_Forest_Summer.png");
 	}
 
 	public async loadMap(mapId: string): Promise<void> {
@@ -48,35 +62,68 @@ export class MapManager {
 			}
 
 			this.map = this.scene.make.tilemap({ key: mapId });
+
 			if (!this.map) {
 				throw new Error("Failed to create tilemap");
 			}
 
-			const groundTileset = this.map.addTilesetImage("Ground", "tiles");
-			const hyptosisTileset = this.map.addTilesetImage(
-				"hyptosis_tiles_1",
-				"tiles2"
-			);
+			const tilesetConfig: Tileset[] = [
+				{ name: "FG_Grounds", key: "tiles" },
+				{ name: "FG_Forest_Summer", key: "tiles2" },
+			];
 
-			if (!groundTileset || !hyptosisTileset) {
-				throw new Error("Failed to load tilesets");
-			}
+			const tilesets = this.loadTilesets(tilesetConfig);
 
-			const groundLayer = this.map.createLayer(
-				"Tile Layer 1",
-				[groundTileset, hyptosisTileset],
-				0,
-				0
-			);
+			const layerConfig: LayerConfig[] = [
+				{
+					name: "BaseLayer",
+					tilesets: ["FG_Grounds"],
+					depth: 0,
+					properties: {},
+				},
+				{
+					name: "MidLayer1",
+					tilesets: ["FG_Grounds", "FG_Forest_Summer"],
+					depth: 1,
+					properties: {},
+				},
+				{
+					name: "MidLayer2",
+					tilesets: ["FG_Forest_Summer"],
+					depth: 2,
+					properties: { collides: true },
+				},
+				{
+					name: "TopLayer",
+					tilesets: ["FG_Forest_Summer"],
+					depth: 4,
+					properties: {},
+				},
+			];
 
-			if (groundLayer) {
-				groundLayer.setCollisionByProperty({ collides: true });
+			for (const config of layerConfig) {
+				const layerTilesets = config.tilesets.map(
+					(name) =>
+						tilesets[name] ??
+						(() => {
+							throw new Error(`Tileset ${name} not found`);
+						})()
+				);
 
-				this.layers.set("Tile Layer 1", groundLayer);
+				const layer = this.map.createLayer(config.name, layerTilesets);
+
+				if (layer) {
+					layer.setDepth(config.depth);
+
+					if (config.properties.collides) {
+						layer.setCollisionByProperty({ collides: true });
+					}
+
+					this.layers.set(config.name, layer);
+				}
 			}
 
 			await this.loadTransitions();
-
 			this.currentMapId = mapId;
 		} catch (error) {
 			this.destroy();
@@ -85,6 +132,22 @@ export class MapManager {
 		} finally {
 			this.isLoading = false;
 		}
+	}
+
+	private loadTilesets(
+		config: Tileset[]
+	): Record<string, Phaser.Tilemaps.Tileset> {
+		const tilesets: Record<string, Phaser.Tilemaps.Tileset> = {};
+
+		for (const { name, key } of config) {
+			const tileset = this.map?.addTilesetImage(name, key);
+			if (!tileset) {
+				throw new Error(`Failed to load tileset: ${name}`);
+			}
+			tilesets[name] = tileset;
+		}
+
+		return tilesets;
 	}
 
 	public getLayer(name: string): Phaser.Tilemaps.TilemapLayer | undefined {
