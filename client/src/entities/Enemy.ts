@@ -26,6 +26,7 @@ export class Enemy {
 	private attackDelay: number;
 	private lastAttackTime: number = 0;
 	private obstructed: boolean = false;
+	private currentSpriteDepth: number = 3;
 
 	constructor(scene: Scene, config: EnemyConfig) {
 		this.scene = scene;
@@ -37,12 +38,13 @@ export class Enemy {
 		this.detectionRadius = config.detectionRadius || 200;
 
 		this.sprite = scene.physics.add.sprite(config.x, config.y, "slime");
-		const collisionCircle = this.sprite.width / 3;
-		const offsetX = (this.sprite.width - collisionCircle * 2) / 2;
-		const offsetY = this.sprite.height - collisionCircle * 2;
 
-		this.sprite.body?.setCircle(collisionCircle, offsetX, offsetY);
+		const collisionRadius = this.sprite.width / 3;
+		const offsetX = (this.sprite.width - collisionRadius * 2) / 2;
+		const offsetY = this.sprite.height - collisionRadius * 2;
+		this.sprite.body?.setCircle(collisionRadius, offsetX, offsetY);
 
+		this.sprite.setDepth(this.currentSpriteDepth);
 		this.sprite.setCollideWorldBounds(true);
 
 		this.startMovementCycle();
@@ -155,6 +157,24 @@ export class Enemy {
 			} else {
 				this.moveRandomly();
 			}
+		}
+
+		this.setSpriteDepth();
+	}
+
+	private setSpriteDepth() {
+		if (
+			(this.target?.y ?? 0) < this.sprite.y &&
+			this.currentSpriteDepth !== 2.9
+		) {
+			this.sprite.setDepth(3.5);
+			this.currentSpriteDepth = 2.5;
+		} else if (
+			(this.target?.y ?? 0) > this.sprite.y &&
+			this.currentSpriteDepth !== 3.1
+		) {
+			this.sprite.setDepth(2.5);
+			this.currentSpriteDepth = 3.5;
 		}
 	}
 

@@ -7,8 +7,14 @@ export abstract class BasePlayer {
 	constructor(scene: Scene, x: number, y: number) {
 		this.scene = scene;
 		this.sprite = scene.physics.add.sprite(x, y, "player2");
+
+		const collisionRadius = this.sprite.width / 2.5;
+		const offsetX = (this.sprite.width - collisionRadius * 2) / 2;
+		const offsetY = this.sprite.height - collisionRadius * 2;
+		this.sprite.body?.setCircle(collisionRadius, offsetX, offsetY);
+
+		this.sprite.setDepth(3.1);
 		this.sprite.setCollideWorldBounds(true);
-		this.sprite.setDepth(3);
 		this.createAnimations();
 	}
 

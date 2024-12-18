@@ -54,34 +54,58 @@ export class MainPlayer extends BasePlayer {
 		const leftPressed = this.cursors.left.isDown || this.aKey.isDown;
 		const rightPressed = this.cursors.right.isDown || this.dKey.isDown;
 
+		this.updateVelocity(upPressed, downPressed, leftPressed, rightPressed);
+	}
+
+	private updateVelocity(
+		upPressed: boolean,
+		downPressed: boolean,
+		leftPressed: boolean,
+		rightPressed: boolean
+	): void {
+		const SPEED = 160;
+		const DIAGONAL_MODIFIER = 0.707; // 1/√2 to normalize diagonal movement
+
+		let velocityX = 0;
+		let velocityY = 0;
+
+		// Calculate X velocity
 		if (leftPressed) {
-			this.sprite.setVelocityX(-160);
+			velocityX = -SPEED;
 			this.sprite.anims.play("left", true);
 			this.facingDirection = "LEFT";
 		} else if (rightPressed) {
-			this.sprite.setVelocityX(160);
+			velocityX = SPEED;
 			this.sprite.anims.play("right", true);
 			this.facingDirection = "RIGHT";
-		} else {
-			this.sprite.setVelocityX(0);
 		}
 
+		// Calculate Y velocity
 		if (upPressed) {
-			this.sprite.setVelocityY(-160);
+			velocityY = -SPEED;
 			if (!leftPressed && !rightPressed) {
 				this.sprite.anims.play("up", true);
 			}
 			this.facingDirection = "UP";
 		} else if (downPressed) {
-			this.sprite.setVelocityY(160);
+			velocityY = SPEED;
 			if (!leftPressed && !rightPressed) {
 				this.sprite.anims.play("down", true);
 			}
 			this.facingDirection = "DOWN";
-		} else {
-			this.sprite.setVelocityY(0);
 		}
 
+		// Apply diagonal movement normalization
+		if (velocityX !== 0 && velocityY !== 0) {
+			velocityX *= DIAGONAL_MODIFIER;
+			velocityY *= DIAGONAL_MODIFIER;
+		}
+
+		// Apply velocities
+		this.sprite.setVelocityX(velocityX);
+		this.sprite.setVelocityY(velocityY);
+
+		// Handle idle state
 		if (!upPressed && !downPressed && !leftPressed && !rightPressed) {
 			this.sprite.anims.pause();
 		}
