@@ -162,7 +162,12 @@ export class Game extends Scene {
 			{ x: 300, y: 200 },
 		];
 
-		positions.forEach((pos) => {
+		positions.forEach((pos, index) => {
+			if (index === 0) {
+				const worldItem = new WorldItem(this, pos.x, pos.y, "sword");
+				this.worldItems.push(worldItem);
+				return;
+			}
 			const worldItem = new WorldItem(this, pos.x, pos.y, "shroom");
 			this.worldItems.push(worldItem);
 		});

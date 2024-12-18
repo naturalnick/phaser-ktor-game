@@ -25,7 +25,7 @@ export class InventoryManager {
 		const itemData = ITEM_DATABASE[itemKey];
 		if (!itemData) return false;
 
-		if (itemData.stackable) {
+		if (itemData.maxStack > 1) {
 			const existingSlot = this.slots.find(
 				(slot) =>
 					slot.itemKey === itemKey && slot.count < itemData.maxStack
@@ -82,7 +82,7 @@ export class InventoryManager {
 		if (fromSlot.itemKey === toSlot.itemKey) {
 			// Same item type - attempt to stack
 			const itemData = ITEM_DATABASE[toSlot.itemKey];
-			if (itemData.stackable) {
+			if (itemData.maxStack > 1) {
 				const spaceInStack = itemData.maxStack - toSlot.count;
 				const amountToMove = Math.min(fromSlot.count, spaceInStack);
 

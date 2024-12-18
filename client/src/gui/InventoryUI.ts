@@ -1,4 +1,5 @@
 import { Scene } from "phaser";
+import { ITEM_DATABASE } from "../types/Item";
 import { UIComponent } from "./UIComponent";
 
 interface InventorySlot {
@@ -24,7 +25,6 @@ export class InventoryUI extends UIComponent {
 	private selectedSlotIndex: number = 0;
 	private background: Phaser.GameObjects.Rectangle;
 	private dragSprite?: Phaser.GameObjects.Sprite;
-	private dragStartPos = { x: 0, y: 0 };
 	private dragStartSlot: number = -1;
 
 	constructor(scene: Scene, config: InventoryUIConfig = {}) {
@@ -179,8 +179,13 @@ export class InventoryUI extends UIComponent {
 		}
 
 		if (itemKey) {
+			const itemData = ITEM_DATABASE[itemKey];
+			if (!itemData) return;
+
+			const spriteKey = itemData.sprite;
+
 			const item = this.scene.add
-				.sprite(4, 4, itemKey)
+				.sprite(4, 4, spriteKey)
 				.setOrigin(0, 0)
 				.setDisplaySize(
 					this.config.slotSize! - 8,
@@ -198,15 +203,10 @@ export class InventoryUI extends UIComponent {
 					(this.scene.scale.width - (uiCamera?.width ?? 0)) / 2
 				);
 
-				this.dragStartPos = {
-					x: pointer.x,
-					y: pointer.y,
-				};
 				this.dragStartSlot = slot;
 
-				// Create a duplicate sprite for dragging
 				this.dragSprite = this.scene.add
-					.sprite(pointer.x - xAdjustment, pointer.y, itemKey)
+					.sprite(pointer.x - xAdjustment, pointer.y, spriteKey)
 					.setDisplaySize(
 						this.config.slotSize! - 8,
 						this.config.slotSize! - 8
@@ -249,9 +249,7 @@ export class InventoryUI extends UIComponent {
 						targetSlot
 					);
 				} else if (!this.isPointerOverInventory(pointer)) {
-					// Handle dropping outside inventory
 					this.scene.events.emit("itemDropped", this.dragStartSlot);
-
 					this.setItem(this.dragStartSlot, "");
 				}
 
