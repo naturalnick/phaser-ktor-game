@@ -4,9 +4,11 @@ import {
 	CameraController,
 } from "../controllers/CameraController";
 import { MainPlayer } from "../entities/MainPlayer";
+import { TransitionTrigger } from "../entities/TransitionTrigger";
 import { WorldItem } from "../entities/WorldItem";
 import { EnemyManager } from "../managers/EnemyManager";
 import { MapManager } from "../managers/MapManager";
+import { SaveManager } from "../managers/SaveManager";
 import { UIManager } from "../managers/UIManager";
 import { WebSocketService } from "../services/Sockets";
 
@@ -49,6 +51,10 @@ export class Game extends Scene {
 		const mapBounds = this.mapManager.getMapBounds();
 
 		if (mapBounds) {
+			this.uiManager = new UIManager(this, {
+				bounds: { width: mapBounds.width, height: mapBounds.height },
+			});
+
 			const playerPos = sceneData?.playerPosition || {
 				x:
 					this.scale.width < mapBounds.width
@@ -60,27 +66,32 @@ export class Game extends Scene {
 						: mapBounds.height / 2,
 			};
 
-			this.uiManager = new UIManager(this, {
-				bounds: { width: mapBounds.width, height: mapBounds.height },
-			});
-
 			this.player = new MainPlayer(
 				this,
 				playerPos.x,
 				playerPos.y,
-				this.uiManager
+				this.uiManager,
+				this.mapManager
 			);
+			this.registry.set("player", this.player);
+
+			const saveData = SaveManager.loadGame(this);
+			if (saveData) {
+				this.player.loadSaveData(saveData.player);
+			}
 
 			this.mapManager.setupPlayerTransitions(this.player.getSprite());
 
 			this.enemyManager = new EnemyManager(this, this.mapManager);
 			this.enemyManager.createEnemiesFromMap(
-				this.mapManager.getCurrentMap()!
+				this.mapManager.getCurrentMap()!,
+				saveData?.maps.map1.enemies
 			);
 			this.enemyManager.setupCollisions(
 				this.player.getSprite(),
 				this.mapManager.getCollisionLayers()
 			);
+			this.registry.set("enemyManager", this.enemyManager);
 
 			this.webSocketService = new WebSocketService(this, this.uiManager);
 			this.webSocketService.initializeConnection(
@@ -89,20 +100,20 @@ export class Game extends Scene {
 				"map1"
 			);
 
-			// const exitTrigger = new TransitionTrigger(
-			// 	this,
-			// 	1, // x position
-			// 	1, // y position
-			// 	16, // width
-			// 	16, // height
-			// 	{
-			// 		targetMap: "map4",
-			// 		playerPosition: { x: 200, y: 200 },
-			// 		fadeColor: 0x000000,
-			// 		duration: 500,
-			// 	}
-			// );
-			// exitTrigger.addOverlapWith(this.player.getSprite());
+			const exitTrigger = new TransitionTrigger(
+				this,
+				100, // x position
+				300, // y position
+				16, // width
+				16, // height
+				{
+					targetMap: "map1",
+					playerPosition: { x: 200, y: 200 },
+					fadeColor: 0x000000,
+					duration: 500,
+				}
+			);
+			exitTrigger.addOverlapWith(this.player.getSprite());
 
 			this.uiManager.initializeChatUI(this.webSocketService);
 
@@ -136,6 +147,14 @@ export class Game extends Scene {
 
 			this.scale.on("resize", (gameSize: Phaser.Structs.Size) => {
 				this.cameraController.setupCamera(cameraConfig);
+			});
+
+			this.game.events.on("blur", () => {
+				SaveManager.saveGame(this);
+			});
+
+			window.addEventListener("beforeunload", () => {
+				SaveManager.saveGame(this);
 			});
 		}
 	}

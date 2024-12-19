@@ -1,6 +1,8 @@
 import { Scene } from "phaser";
+import { EnemySaveData } from "../types/SaveData";
 
 interface EnemyConfig {
+	id: number;
 	x: number;
 	y: number;
 	damage?: number;
@@ -14,6 +16,7 @@ interface EnemyConfig {
 
 export class Enemy {
 	private scene: Scene;
+	private id: number;
 	private sprite: Phaser.Physics.Arcade.Sprite;
 	private damage: number;
 	private speed: number;
@@ -31,9 +34,11 @@ export class Enemy {
 	private lastAttackTime: number = 0;
 	private currentSpriteDepth: number = 3;
 	private tileLayers?: Phaser.Tilemaps.TilemapLayer[];
+	private playerHost?: string;
 
 	constructor(scene: Scene, config: EnemyConfig) {
 		this.scene = scene;
+		this.id = config.id;
 		this.damage = config.damage || 10;
 		this.speed = config.speed || 50;
 		this.canAttack = config.canAttack ?? true;
@@ -44,16 +49,19 @@ export class Enemy {
 
 		this.sprite = scene.physics.add.sprite(config.x, config.y, "slime");
 
+		this.setHitbox();
+		this.sprite.setDepth(this.currentSpriteDepth);
+		this.sprite.setCollideWorldBounds(true);
+
+		this.startMovementCycle();
+	}
+
+	private setHitbox() {
 		const collisionRadius = this.sprite.width / 3;
 		const offsetX = (this.sprite.width - collisionRadius * 2) / 2;
 		const offsetY = this.sprite.height - collisionRadius * 2;
 		this.sprite.body?.setCircle(collisionRadius, offsetX, offsetY);
 		this.sprite.setScale(0.5); // temporary for this sprite which is 32x32
-
-		this.sprite.setDepth(this.currentSpriteDepth);
-		this.sprite.setCollideWorldBounds(true);
-
-		this.startMovementCycle();
 	}
 
 	private startMovementCycle(): void {
@@ -222,6 +230,14 @@ export class Enemy {
 		this.obstructed = true;
 	}
 
+	public getEnemyPosition(): EnemySaveData {
+		return {
+			id: this.id,
+			x: this.sprite.x,
+			y: this.sprite.y,
+		};
+	}
+
 	public update(): void {
 		this.checkDetection();
 
@@ -235,9 +251,16 @@ export class Enemy {
 	}
 
 	public destroy(): void {
+		if (this.sprite) {
+			this.sprite.destroy();
+		}
+
 		if (this.moveTimer) {
 			this.moveTimer.destroy();
 		}
-		this.sprite.destroy();
+
+		this.target = undefined;
+		this.lastTargetPosition = undefined;
+		this.tileLayers = undefined;
 	}
 }

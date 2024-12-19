@@ -1,5 +1,6 @@
 import { Scene } from "phaser";
 import { Enemy } from "../entities/Enemy";
+import { EnemySaveData } from "../types/SaveData";
 import { MapManager } from "./MapManager";
 
 export class EnemyManager {
@@ -13,7 +14,10 @@ export class EnemyManager {
 		this.mapManager = mapManager;
 	}
 
-	public createEnemiesFromMap(map: Phaser.Tilemaps.Tilemap): void {
+	public createEnemiesFromMap(
+		map: Phaser.Tilemaps.Tilemap,
+		saveData?: EnemySaveData[]
+	): void {
 		const enemyLayer = map.getObjectLayer("Enemies");
 
 		if (!enemyLayer) {
@@ -22,7 +26,14 @@ export class EnemyManager {
 		}
 
 		enemyLayer.objects.forEach((enemyObj) => {
+			const enemySave = saveData?.find((e) => e.id === enemyObj.id);
+			if (enemySave) {
+				enemyObj.x = enemySave.x;
+				enemyObj.y = enemySave.y;
+			}
+
 			const enemy = new Enemy(this.scene, {
+				id: enemyObj.id,
 				x: enemyObj.x || 0,
 				y: enemyObj.y || 0,
 				damage:
@@ -47,6 +58,7 @@ export class EnemyManager {
 
 			if (this.playerSprite) {
 				enemy.setTarget(this.playerSprite);
+				// Give enemy all network player targets
 			}
 			enemy.setTileLayers(this.mapManager.getCollisionLayers());
 
@@ -102,6 +114,10 @@ export class EnemyManager {
 				);
 			}
 		});
+	}
+
+	public getEnemySaveData(): EnemySaveData[] {
+		return this.enemies.map((enemy) => enemy.getEnemyPosition());
 	}
 
 	public update(): void {

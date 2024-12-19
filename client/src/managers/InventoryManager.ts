@@ -21,6 +21,12 @@ export class InventoryManager {
 			}));
 	}
 
+	public setItem(slotIndex: number, itemKey: string, count: number): void {
+		const slot = this.slots[slotIndex];
+		slot.itemKey = itemKey;
+		slot.count = count;
+	}
+
 	public addItem(itemKey: string, count: number = 1): boolean {
 		const itemData = ITEM_DATABASE[itemKey];
 		if (!itemData) return false;
