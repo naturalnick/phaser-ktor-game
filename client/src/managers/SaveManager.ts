@@ -2,6 +2,7 @@ import { Scene } from "phaser";
 import { MainPlayer } from "../entities/MainPlayer";
 import { GameSaveData } from "../types/SaveData";
 import { EnemyManager } from "./EnemyManager";
+import { WorldItemManager } from "./WorldItemManager";
 
 export class SaveManager {
 	private static readonly SAVE_KEY = "game_save";
@@ -10,6 +11,9 @@ export class SaveManager {
 	public static saveGame(scene: Scene): void {
 		const player = scene.registry.get("player") as MainPlayer;
 		const enemyManager = scene.registry.get("enemyManager") as EnemyManager;
+		const worldItemManager = scene.registry.get(
+			"worldItemManager"
+		) as WorldItemManager;
 
 		const saveData: GameSaveData = {
 			player: {
@@ -35,7 +39,11 @@ export class SaveManager {
 			maps: {
 				map1: {
 					enemies: enemyManager.getEnemySaveData(),
-					items: [],
+					items: worldItemManager.getItems().map((item) => ({
+						key: item.getItemKey(),
+						x: item.x,
+						y: item.y,
+					})),
 				},
 			},
 			version: this.CURRENT_VERSION,
@@ -52,8 +60,27 @@ export class SaveManager {
 
 		const saveJson = localStorage.getItem(this.SAVE_KEY);
 		const saveData = JSON.parse(saveJson || "{}") as GameSaveData;
-
 		saveData.maps[player.getCurrentMap() ?? "map1"].enemies = enemyData;
+
+		localStorage.setItem(this.SAVE_KEY, JSON.stringify(saveData));
+	}
+
+	public static saveItemState(scene: Scene): void {
+		const player = scene.registry.get("player") as MainPlayer;
+		const worldItemManager = scene.registry.get(
+			"worldItemManager"
+		) as WorldItemManager;
+
+		const saveJson = localStorage.getItem(this.SAVE_KEY);
+		const saveData = JSON.parse(saveJson || "{}") as GameSaveData;
+
+		const itemData = worldItemManager.getItems().map((item) => ({
+			key: item.getItemKey(),
+			x: item.x,
+			y: item.y,
+		}));
+
+		saveData.maps[player.getCurrentMap() ?? "map1"].items = itemData;
 
 		localStorage.setItem(this.SAVE_KEY, JSON.stringify(saveData));
 	}

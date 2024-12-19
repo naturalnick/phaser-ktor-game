@@ -46,18 +46,12 @@ export class TransitionTrigger {
 	}
 
 	private cleanupCurrentScene(): void {
-		// Get the enemy manager from the scene
 		const enemyManager = (this.scene as any).enemyManager as EnemyManager;
 		if (enemyManager) {
 			SaveManager.saveEnemyState(this.scene);
+			SaveManager.saveItemState(this.scene);
 			enemyManager.destroy();
 		}
-
-		// // You might want to clean up other managers/services here as well
-		// const webSocketService = (this.scene as any).webSocketService;
-		// if (webSocketService) {
-		// 	webSocketService.destroy();
-		// }
 	}
 
 	private handleTransition(callback?: () => void): void {

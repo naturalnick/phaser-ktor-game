@@ -5,11 +5,11 @@ import {
 } from "../controllers/CameraController";
 import { MainPlayer } from "../entities/MainPlayer";
 import { TransitionTrigger } from "../entities/TransitionTrigger";
-import { WorldItem } from "../entities/WorldItem";
 import { EnemyManager } from "../managers/EnemyManager";
 import { MapManager } from "../managers/MapManager";
 import { SaveManager } from "../managers/SaveManager";
 import { UIManager } from "../managers/UIManager";
+import { WorldItemManager } from "../managers/WorldItemManager";
 import { WebSocketService } from "../services/Sockets";
 
 export class Game extends Scene {
@@ -18,8 +18,8 @@ export class Game extends Scene {
 	private mapManager!: MapManager;
 	private player!: MainPlayer;
 	private uiManager!: UIManager;
-	private worldItems: WorldItem[] = [];
 	private enemyManager!: EnemyManager;
+	private worldItemManager!: WorldItemManager;
 
 	constructor() {
 		super("Game");
@@ -51,114 +51,131 @@ export class Game extends Scene {
 		const mapBounds = this.mapManager.getMapBounds();
 
 		if (mapBounds) {
-			this.uiManager = new UIManager(this, {
-				bounds: { width: mapBounds.width, height: mapBounds.height },
-			});
-
-			const playerPos = sceneData?.playerPosition || {
-				x:
-					this.scale.width < mapBounds.width
-						? this.scale.width / 2
-						: mapBounds.width / 2,
-				y:
-					this.scale.height < mapBounds.height
-						? this.scale.height / 2
-						: mapBounds.height / 2,
-			};
-
-			this.player = new MainPlayer(
-				this,
-				playerPos.x,
-				playerPos.y,
-				this.uiManager,
-				this.mapManager
-			);
-			this.registry.set("player", this.player);
+			this.setupManagers(mapBounds);
+			this.setupPlayer(mapBounds, sceneData?.playerPosition);
 
 			const saveData = SaveManager.loadGame(this);
 			if (saveData) {
 				this.player.loadSaveData(saveData.player);
 			}
 
-			this.mapManager.setupPlayerTransitions(this.player.getSprite());
-
-			this.enemyManager = new EnemyManager(this, this.mapManager);
-			this.enemyManager.createEnemiesFromMap(
-				this.mapManager.getCurrentMap()!,
-				saveData?.maps.map1.enemies
-			);
-			this.enemyManager.setupCollisions(
-				this.player.getSprite(),
-				this.mapManager.getCollisionLayers()
-			);
-			this.registry.set("enemyManager", this.enemyManager);
-
-			this.webSocketService = new WebSocketService(this, this.uiManager);
-			this.webSocketService.initializeConnection(
-				playerPos.x,
-				playerPos.y,
-				"map1"
-			);
-
-			const exitTrigger = new TransitionTrigger(
-				this,
-				100, // x position
-				300, // y position
-				16, // width
-				16, // height
-				{
-					targetMap: "map1",
-					playerPosition: { x: 200, y: 200 },
-					fadeColor: 0x000000,
-					duration: 500,
-				}
-			);
-			exitTrigger.addOverlapWith(this.player.getSprite(), () =>
-				console.log("here")
-			);
-
-			this.uiManager.initializeChatUI(this.webSocketService);
-
-			this.createTestItems();
-			this.uiManager.updateIgnoreList();
-
-			const collisionLayers = this.mapManager.getCollisionLayers();
-			collisionLayers.forEach((layer) => {
-				this.physics.add.collider(this.player.getSprite(), layer);
-			});
-
-			this.physics.world.setBounds(
-				-16,
-				-16,
-				mapBounds.width + 32,
-				mapBounds.height + 32
-			);
-
-			const cameraConfig: CameraConfig = {
-				lerp: 0.1,
-				bounds: {
-					x: 0,
-					y: 0,
-					width: mapBounds.width,
-					height: mapBounds.height,
-				},
-			};
-
-			this.cameraController = new CameraController(this, cameraConfig);
-			this.cameraController.startFollow(this.player.getSprite());
-
-			this.scale.on("resize", (gameSize: Phaser.Structs.Size) => {
-				this.cameraController.setupCamera(cameraConfig);
-			});
-
-			this.game.events.on("blur", () => {
-				SaveManager.saveGame(this);
-			});
-
-			window.addEventListener("beforeunload", () => {
-				SaveManager.saveGame(this);
-			});
+			this.setupGame(saveData);
+			this.setupEventListeners(mapBounds);
 		}
+	}
+
+	private setupManagers(mapBounds: { width: number; height: number }): void {
+		this.uiManager = new UIManager(this, {
+			bounds: { width: mapBounds.width, height: mapBounds.height },
+		});
+
+		this.worldItemManager = new WorldItemManager(this);
+		this.registry.set("worldItemManager", this.worldItemManager);
+
+		this.enemyManager = new EnemyManager(this, this.mapManager);
+	}
+
+	private setupPlayer(
+		mapBounds: { width: number; height: number },
+		playerPosition?: { x: number; y: number }
+	): void {
+		const playerPos = playerPosition || {
+			x:
+				this.scale.width < mapBounds.width
+					? this.scale.width / 2
+					: mapBounds.width / 2,
+			y:
+				this.scale.height < mapBounds.height
+					? this.scale.height / 2
+					: mapBounds.height / 2,
+		};
+
+		this.player = new MainPlayer(
+			this,
+			playerPos.x,
+			playerPos.y,
+			this.uiManager,
+			this.mapManager
+		);
+		this.registry.set("player", this.player);
+	}
+
+	private setupGame(saveData?: any): void {
+		this.mapManager.setupPlayerTransitions(this.player.getSprite());
+
+		this.enemyManager.createEnemiesFromMap(
+			this.mapManager.getCurrentMap()!,
+			saveData?.maps.map1.enemies
+		);
+		this.enemyManager.setupCollisions(
+			this.player.getSprite(),
+			this.mapManager.getCollisionLayers()
+		);
+		this.registry.set("enemyManager", this.enemyManager);
+
+		this.webSocketService = new WebSocketService(this, this.uiManager);
+		this.webSocketService.initializeConnection(
+			this.player.getSprite().x,
+			this.player.getSprite().y,
+			"map1"
+		);
+
+		const exitTrigger = new TransitionTrigger(this, 100, 300, 16, 16, {
+			targetMap: "map1",
+			playerPosition: { x: 200, y: 200 },
+			fadeColor: 0x000000,
+			duration: 500,
+		});
+		exitTrigger.addOverlapWith(this.player.getSprite(), () =>
+			console.log("here")
+		);
+
+		this.uiManager.initializeChatUI(this.webSocketService);
+
+		this.worldItemManager.loadItems(saveData?.maps.map1.items);
+		this.uiManager.updateIgnoreList();
+
+		const collisionLayers = this.mapManager.getCollisionLayers();
+		collisionLayers.forEach((layer) => {
+			this.physics.add.collider(this.player.getSprite(), layer);
+		});
+	}
+
+	private setupEventListeners(mapBounds: {
+		width: number;
+		height: number;
+	}): void {
+		this.physics.world.setBounds(
+			-16,
+			-16,
+			mapBounds.width + 32,
+			mapBounds.height + 32
+		);
+
+		const cameraConfig: CameraConfig = {
+			lerp: 0.1,
+			bounds: {
+				x: 0,
+				y: 0,
+				width: mapBounds.width,
+				height: mapBounds.height,
+			},
+		};
+
+		this.cameraController = new CameraController(this, cameraConfig);
+		this.cameraController.startFollow(this.player.getSprite());
+
+		this.scale.on("resize", () => {
+			this.cameraController.setupCamera(cameraConfig);
+		});
+
+		this.game.events.on("blur", () => {
+			SaveManager.saveGame(this);
+		});
+
+		window.addEventListener("beforeunload", () => {
+			SaveManager.saveGame(this);
+		});
 	}
 
 	update(): void {
@@ -171,7 +188,6 @@ export class Game extends Scene {
 				this.player.getVelocity().y !== 0)
 		) {
 			const sprite = this.player.getSprite();
-			// console.log(sprite.x, sprite.y);
 			this.webSocketService.sendPosition(
 				sprite.x,
 				sprite.y,
@@ -180,26 +196,9 @@ export class Game extends Scene {
 		}
 	}
 
-	private createTestItems(): void {
-		const positions = [
-			{ x: 600, y: 600 },
-			{ x: 200, y: 150 },
-			{ x: 300, y: 200 },
-		];
-
-		positions.forEach((pos, index) => {
-			if (index === 0) {
-				const worldItem = new WorldItem(this, pos.x, pos.y, "sword");
-				this.worldItems.push(worldItem);
-				return;
-			}
-			const worldItem = new WorldItem(this, pos.x, pos.y, "shroom");
-			this.worldItems.push(worldItem);
-		});
-	}
-
 	destroy(): void {
 		this.webSocketService?.destroy();
 		this.enemyManager?.destroy();
+		this.worldItemManager?.destroy();
 	}
 }

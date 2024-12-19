@@ -4,6 +4,7 @@ import { InventoryManager } from "../managers/InventoryManager";
 import { MapManager } from "../managers/MapManager";
 import { SaveManager } from "../managers/SaveManager";
 import { UIManager } from "../managers/UIManager";
+import { WorldItemManager } from "../managers/WorldItemManager";
 import { ITEM_DATABASE } from "../types/Item";
 import { DEFAULT_PLAYER_STATS, PlayerStats } from "../types/PlayerStats";
 import { PlayerSaveData } from "../types/SaveData";
@@ -17,6 +18,7 @@ export class MainPlayer extends BasePlayer {
 	private inventory: InventoryManager;
 	private uiManager: UIManager;
 	private mapManager: MapManager;
+	private worldItemManager: WorldItemManager;
 	private interactKey: Phaser.Input.Keyboard.Key;
 	private dropKey: Phaser.Input.Keyboard.Key;
 	private useKey: Phaser.Input.Keyboard.Key;
@@ -39,7 +41,7 @@ export class MainPlayer extends BasePlayer {
 		this.uiManager = uiManager;
 		this.mapManager = mapManager;
 		this.inventory = new InventoryManager(10);
-
+		this.worldItemManager = this.scene.registry.get("worldItemManager");
 		this.healthManager = new HealthManager(scene, stats.baseHealth, {
 			onChange: (current, max) => {
 				this.uiManager.updateHealthBar(current, max);
@@ -201,13 +203,13 @@ export class MainPlayer extends BasePlayer {
 				const itemKey = worldItem.getItemKey();
 
 				if (this.inventory.addItem(itemKey)) {
-					worldItem.destroy();
+					this.worldItemManager.removeItem(worldItem);
 					this.updateInventoryUI();
+					// SaveManager.saveItemState(this.scene);
 					break;
 				}
 			}
 		}
-		this.damage(10);
 	}
 
 	private tryDropItem(slotIndex?: number): void {
@@ -218,15 +220,14 @@ export class MainPlayer extends BasePlayer {
 		);
 
 		if (droppedItemKey) {
-			new WorldItem(
-				this.scene,
-				this.sprite.x - this.sprite.width / 2,
-				this.sprite.y - this.sprite.height / 2,
-				droppedItemKey
-			);
+			const dropX = this.sprite.x - this.sprite.width / 2;
+			const dropY = this.sprite.y - this.sprite.height / 2;
+
+			this.worldItemManager.dropItem(dropX, dropY, droppedItemKey);
 
 			this.updateInventoryUI();
 			this.uiManager.updateIgnoreList();
+			// SaveManager.saveItemState(this.scene);
 		}
 	}
 
