@@ -48,6 +48,7 @@ export class EnemyManager {
 			if (this.playerSprite) {
 				enemy.setTarget(this.playerSprite);
 			}
+			enemy.setTileLayers(this.mapManager.getCollisionLayers());
 
 			this.enemies.push(enemy);
 		});
