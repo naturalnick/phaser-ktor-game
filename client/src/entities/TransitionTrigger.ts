@@ -1,5 +1,6 @@
 import { Scene } from "phaser";
 import { EnemyManager } from "../managers/EnemyManager";
+import { SaveManager } from "../managers/SaveManager";
 import { TransitionData } from "../types/SceneTransition";
 
 export class TransitionTrigger {
@@ -47,8 +48,8 @@ export class TransitionTrigger {
 	private cleanupCurrentScene(): void {
 		// Get the enemy manager from the scene
 		const enemyManager = (this.scene as any).enemyManager as EnemyManager;
-
 		if (enemyManager) {
+			SaveManager.saveEnemyState(this.scene);
 			enemyManager.destroy();
 		}
 
@@ -62,7 +63,6 @@ export class TransitionTrigger {
 	private handleTransition(callback?: () => void): void {
 		console.log(`Transitioning to map: ${this.transitionData.targetMap}`);
 
-		// Launch fade transition scene
 		this.scene.scene.launch("FadeTransition", {
 			targetScene: "Game",
 			targetMap: this.transitionData.targetMap,
@@ -70,7 +70,6 @@ export class TransitionTrigger {
 			fadeColor: this.transitionData.fadeColor,
 			duration: this.transitionData.duration,
 			onComplete: () => {
-				// Reset transition flag after completion
 				this.isTransitioning = false;
 
 				if (callback) {

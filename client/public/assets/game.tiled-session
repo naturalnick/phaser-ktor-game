@@ -13,10 +13,10 @@
         },
         "maps/map1.tmj": {
             "scale": 1.95,
-            "selectedLayer": 2,
+            "selectedLayer": 4,
             "viewCenter": {
                 "x": 372.0512820512821,
-                "y": 192.30769230769235
+                "y": 192.30769230769232
             }
         },
         "maps/map1.tmj#FG_Forest_Summer": {

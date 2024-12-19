@@ -45,6 +45,19 @@ export class SaveManager {
 		localStorage.setItem(this.SAVE_KEY, JSON.stringify(saveData));
 	}
 
+	public static saveEnemyState(scene: Scene): void {
+		const player = scene.registry.get("player") as MainPlayer;
+		const enemyManager = scene.registry.get("enemyManager") as EnemyManager;
+		const enemyData = enemyManager.getEnemySaveData();
+
+		const saveJson = localStorage.getItem(this.SAVE_KEY);
+		const saveData = JSON.parse(saveJson || "{}") as GameSaveData;
+
+		saveData.maps[player.getCurrentMap() ?? "map1"].enemies = enemyData;
+
+		localStorage.setItem(this.SAVE_KEY, JSON.stringify(saveData));
+	}
+
 	public static loadGame(scene: Scene): GameSaveData | null {
 		const saveJson = localStorage.getItem(this.SAVE_KEY);
 		if (!saveJson) return null;

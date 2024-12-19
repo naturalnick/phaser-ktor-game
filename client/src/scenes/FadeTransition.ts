@@ -1,4 +1,5 @@
 import { Scene } from "phaser";
+import { SaveManager } from "../managers/SaveManager";
 
 export class FadeTransition extends Scene {
 	constructor() {
@@ -11,12 +12,14 @@ export class FadeTransition extends Scene {
 		playerPosition,
 		fadeColor = 0x000000,
 		duration = 500,
+		onComplete,
 	}: {
 		targetScene: string;
 		targetMap: string;
 		playerPosition: { x: number; y: number };
 		fadeColor?: number;
 		duration?: number;
+		onComplete?: () => void;
 	}) {
 		const rect = this.add.rectangle(
 			0,
@@ -46,6 +49,9 @@ export class FadeTransition extends Scene {
 					duration: duration / 2,
 					onComplete: () => {
 						this.scene.remove(this);
+						if (onComplete) {
+							onComplete();
+						}
 					},
 				});
 			},

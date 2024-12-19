@@ -113,7 +113,9 @@ export class Game extends Scene {
 					duration: 500,
 				}
 			);
-			exitTrigger.addOverlapWith(this.player.getSprite());
+			exitTrigger.addOverlapWith(this.player.getSprite(), () =>
+				console.log("here")
+			);
 
 			this.uiManager.initializeChatUI(this.webSocketService);
 
