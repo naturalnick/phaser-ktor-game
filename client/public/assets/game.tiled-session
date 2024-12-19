@@ -3,12 +3,12 @@
         "height": 4300,
         "width": 2
     },
-    "activeFile": "maps/map1.tmj",
+    "activeFile": "",
     "expandedProjectPaths": [
     ],
     "fileStates": {
         "": {
-            "scaleInDock": 1.0942,
+            "scaleInDock": 1,
             "scaleInEditor": 1.81
         },
         "maps/map1.tmj": {
@@ -24,6 +24,10 @@
         },
         "maps/map1.tmj#FG_Grounds": {
             "scaleInDock": 1
+        },
+        "maps/map1.tmj#Trees_shadow_source": {
+            "scaleInDock": 1,
+            "scaleInEditor": 1
         },
         "tilesets/FG_Grounds.tsj": {
             "scaleInDock": 1,

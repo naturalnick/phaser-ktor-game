@@ -37,6 +37,10 @@ export class MapManager {
 	public preload(): void {
 		this.scene.load.image("tiles", "assets/tilesets/FG_Grounds.png");
 		this.scene.load.image("tiles2", "assets/tilesets/FG_Forest_Summer.png");
+		this.scene.load.image(
+			"tiles3",
+			"assets/tilesets/Trees_shadow_source.png"
+		);
 	}
 
 	public async loadMap(mapId: string): Promise<void> {
@@ -70,6 +74,7 @@ export class MapManager {
 			const tilesetConfig: Tileset[] = [
 				{ name: "FG_Grounds", key: "tiles" },
 				{ name: "FG_Forest_Summer", key: "tiles2" },
+				{ name: "Trees_shadow_source", key: "tiles3" },
 			];
 
 			const tilesets = this.loadTilesets(tilesetConfig);
@@ -83,19 +88,23 @@ export class MapManager {
 				},
 				{
 					name: "MidLayer1",
-					tilesets: ["FG_Grounds", "FG_Forest_Summer"],
+					tilesets: [
+						"FG_Grounds",
+						"FG_Forest_Summer",
+						"Trees_shadow_source",
+					],
 					depth: 1,
-					properties: {},
+					properties: { collides: true },
 				},
 				{
 					name: "MidLayer2",
-					tilesets: ["FG_Forest_Summer"],
+					tilesets: ["FG_Forest_Summer", "Trees_shadow_source"],
 					depth: 2,
 					properties: { collides: true },
 				},
 				{
 					name: "TopLayer",
-					tilesets: ["FG_Forest_Summer"],
+					tilesets: ["FG_Forest_Summer", "Trees_shadow_source"],
 					depth: 4,
 					properties: {},
 				},
@@ -116,6 +125,7 @@ export class MapManager {
 					layer.setDepth(config.depth);
 
 					if (config.properties.collides) {
+						console.log(config.properties.collides == true);
 						layer.setCollisionByProperty({ collides: true });
 					}
 
