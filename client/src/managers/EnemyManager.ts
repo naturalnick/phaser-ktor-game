@@ -32,6 +32,18 @@ export class EnemyManager {
 		this.createAndSetupEnemies(map, config);
 	}
 
+	public updatePlayerPosition(playerId: string, x: number, y: number) {
+		this.enemies.forEach((enemy) => {
+			enemy.updatePlayerPosition(playerId, x, y);
+		});
+	}
+
+	public removePlayer(playerId: string) {
+		this.enemies.forEach((enemy) => {
+			enemy.removePlayer(playerId);
+		});
+	}
+
 	private createAndSetupEnemies(
 		map: Phaser.Tilemaps.Tilemap,
 		config: EnemySetupConfig
@@ -90,8 +102,7 @@ export class EnemyManager {
 		mapId: string;
 		enemies: EnemySaveData[];
 	}): void {
-		console.log("isControlledByHost", this.isControlledByHost);
-		if (this.isControlledByHost) return; // Skip if we're controlling the enemies
+		if (this.isControlledByHost) return;
 
 		const currentMapId = this.mapManager.getCurrentMapId();
 		if (enemyData.mapId !== currentMapId) return;

@@ -1,22 +1,27 @@
 import { Scene } from "phaser";
 import { OtherPlayer } from "../entities/OtherPlayer";
 import { EnemyManager } from "../managers/EnemyManager";
+import { MultiplayerManager } from "../managers/MultiplayerManager";
 import { UIManager } from "../managers/UIManager";
 
 export class WebSocketService {
 	private socket: WebSocket;
 	private scene: Scene;
-	private otherPlayers: Map<string, OtherPlayer>;
 	private messageHandlers: ((playerId: string, message: string) => void)[] =
 		[];
 	private uiManager: UIManager;
 	private isEnemyHost: boolean = false;
 	private enemyUpdateInterval: number | null = null;
+	private playerManager: MultiplayerManager;
 
-	constructor(scene: Scene, uiManager: UIManager) {
+	constructor(
+		scene: Scene,
+		uiManager: UIManager,
+		multiplayerManager: MultiplayerManager
+	) {
 		this.scene = scene;
-		this.otherPlayers = new Map();
 		this.uiManager = uiManager;
+		this.playerManager = multiplayerManager;
 
 		const playerId = Math.floor(Math.random() * 100).toString();
 		this.socket = new WebSocket(`ws://localhost:8080/game?id=${playerId}`);
@@ -59,30 +64,46 @@ export class WebSocketService {
 	}
 
 	private handlePlayerJoin(playerId: string, x: number, y: number): void {
-		if (!this.otherPlayers.has(playerId)) {
+		if (!this.playerManager.players.has(playerId)) {
 			const newPlayer = new OtherPlayer(this.scene, x, y);
-			this.otherPlayers.set(playerId, newPlayer);
+			this.playerManager.players.set(playerId, newPlayer);
+
+			const enemyManager = this.scene.registry.get(
+				"enemyManager"
+			) as EnemyManager;
+			enemyManager.updatePlayerPosition(playerId, x, y);
+
 			this.uiManager.updateIgnoreList();
 		}
 	}
 
 	private handlePlayerMove(playerId: string, x: number, y: number): void {
-		if (!this.otherPlayers.has(playerId)) {
+		if (!this.playerManager.players.has(playerId)) {
 			this.handlePlayerJoin(playerId, x, y);
 			return;
 		}
 
-		const player = this.otherPlayers.get(playerId);
+		const player = this.playerManager.players.get(playerId);
 		if (player) {
 			player.moveTo(x, y);
+
+			const enemyManager = this.scene.registry.get(
+				"enemyManager"
+			) as EnemyManager;
+			enemyManager.updatePlayerPosition(playerId, x, y);
 		}
 	}
 
 	private handlePlayerLeave(playerId: string): void {
-		const player = this.otherPlayers.get(playerId);
+		const player = this.playerManager.players.get(playerId);
 		if (player) {
 			player.destroy();
-			this.otherPlayers.delete(playerId);
+			this.playerManager.players.delete(playerId);
+
+			const enemyManager = this.scene.registry.get(
+				"enemyManager"
+			) as EnemyManager;
+			enemyManager.removePlayer(playerId);
 		}
 	}
 
@@ -106,7 +127,6 @@ export class WebSocketService {
 	}
 
 	public sendPosition(x: number, y: number, mapId: string): void {
-		console.log("here");
 		if (this.socket.readyState === WebSocket.OPEN) {
 			this.socket.send(`move|${x}|${y}|${mapId}`);
 		}
@@ -187,8 +207,8 @@ export class WebSocketService {
 	public destroy(): void {
 		this.stopEnemyBroadcast();
 		this.socket.close();
-		this.otherPlayers.forEach((player) => player.destroy());
-		this.otherPlayers.clear();
+		this.playerManager.players.forEach((player) => player.destroy());
+		this.playerManager.players.clear();
 		this.messageHandlers = [];
 	}
 }

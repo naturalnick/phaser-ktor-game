@@ -1,14 +1,15 @@
 export class DetectionManager {
 	private sprite: Phaser.Physics.Arcade.Sprite;
-	private _target: Phaser.Physics.Arcade.Sprite;
+	private _player?: Phaser.Physics.Arcade.Sprite;
 	private _hasDetectedPlayer: boolean = false;
 	private _lastTargetPosition?: { x: number; y: number };
 	private detectionRadius: number;
 	private escapeRadius: number;
 	private _tileLayers?: Phaser.Tilemaps.TilemapLayer[];
+	private playerPositions: Map<string, { x: number; y: number }> = new Map();
 
-	set target(target: Phaser.Physics.Arcade.Sprite) {
-		this._target = target;
+	set player(player: Phaser.Physics.Arcade.Sprite) {
+		this._player = player;
 	}
 
 	get hasDetectedPlayer(): boolean {
@@ -33,41 +34,29 @@ export class DetectionManager {
 		escapeRadius: number = 200
 	) {
 		this.sprite = sprite;
-		this.detectionRadius = detectionRadius || 200;
-		this.escapeRadius = escapeRadius || 300;
+		this.detectionRadius = detectionRadius;
+		this.escapeRadius = escapeRadius;
 	}
 
-	private isPlayerDetected(): boolean {
-		if (!this._target) return false;
-
-		const distance = Phaser.Math.Distance.Between(
-			this.sprite.x,
-			this.sprite.y,
-			this._target.x,
-			this._target.y
-		);
-
-		if (distance > this.escapeRadius) {
-			this._hasDetectedPlayer = false;
-			return false;
-		}
-
-		if (distance <= this.detectionRadius || this._hasDetectedPlayer) {
-			this._hasDetectedPlayer = true;
-			return true;
-		}
-
-		return false;
+	public updatePlayerPosition(id: string, x: number, y: number): void {
+		this.playerPositions.set(id, { x, y });
 	}
 
-	private hasLineOfSight(): boolean {
-		if (!this._target || !this._tileLayers) return false;
+	public removePlayer(id: string): void {
+		this.playerPositions.delete(id);
+	}
+
+	private hasLineOfSightToPosition(position: {
+		x: number;
+		y: number;
+	}): boolean {
+		if (!this._tileLayers) return false;
 
 		const ray = new Phaser.Geom.Line(
 			this.sprite.x,
 			this.sprite.y,
-			this._target.x,
-			this._target.y
+			position.x,
+			position.y
 		);
 
 		const tileWidth = this._tileLayers[0].tilemap.tileWidth;
@@ -82,21 +71,77 @@ export class DetectionManager {
 				}
 			}
 		}
-
 		return true;
 	}
 
-	public checkDetection(): void {
-		if (!this._target) return;
+	private findNearestVisibleTarget():
+		| { position: { x: number; y: number }; distance: number }
+		| undefined {
+		let nearestTarget:
+			| { position: { x: number; y: number }; distance: number }
+			| undefined;
 
-		this._hasDetectedPlayer = this.isPlayerDetected();
-		const hasLineOfSight = this.hasLineOfSight();
+		if (this._player) {
+			const playerPos = { x: this._player.x, y: this._player.y };
+			const distance = Phaser.Math.Distance.Between(
+				this.sprite.x,
+				this.sprite.y,
+				playerPos.x,
+				playerPos.y
+			);
 
-		if (this._hasDetectedPlayer && hasLineOfSight) {
-			this._lastTargetPosition = {
-				x: this._target.x,
-				y: this._target.y,
-			};
+			if (
+				distance <= this.escapeRadius &&
+				this.hasLineOfSightToPosition(playerPos)
+			) {
+				nearestTarget = { position: playerPos, distance };
+			}
 		}
+
+		this.playerPositions.forEach((pos) => {
+			const distance = Phaser.Math.Distance.Between(
+				this.sprite.x,
+				this.sprite.y,
+				pos.x,
+				pos.y
+			);
+
+			if (
+				distance <= this.escapeRadius &&
+				this.hasLineOfSightToPosition(pos)
+			) {
+				if (!nearestTarget || distance < nearestTarget.distance) {
+					nearestTarget = { position: pos, distance };
+				}
+			}
+		});
+
+		return nearestTarget;
+	}
+
+	public checkDetection(): void {
+		const nearestTarget = this.findNearestVisibleTarget();
+
+		if (nearestTarget) {
+			const { position, distance } = nearestTarget;
+
+			if (distance <= this.detectionRadius) {
+				this._hasDetectedPlayer = true;
+				this._lastTargetPosition = position;
+			} else if (distance > this.escapeRadius) {
+				this._hasDetectedPlayer = false;
+				this._lastTargetPosition = undefined;
+			}
+		} else {
+			this._hasDetectedPlayer = false;
+			this._lastTargetPosition = undefined;
+		}
+	}
+
+	public destroy(): void {
+		this.playerPositions.clear();
+		this._tileLayers = undefined;
+		this._lastTargetPosition = undefined;
+		this._hasDetectedPlayer = false;
 	}
 }

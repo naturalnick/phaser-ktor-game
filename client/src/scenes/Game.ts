@@ -7,6 +7,7 @@ import { MainPlayer } from "../entities/MainPlayer";
 import { TransitionTrigger } from "../entities/TransitionTrigger";
 import { EnemyManager } from "../managers/EnemyManager";
 import { MapManager } from "../managers/MapManager";
+import { MultiplayerManager } from "../managers/MultiplayerManager";
 import { SaveManager } from "../managers/SaveManager";
 import { UIManager } from "../managers/UIManager";
 import { WorldItemManager } from "../managers/WorldItemManager";
@@ -20,6 +21,7 @@ export class Game extends Scene {
 	private uiManager!: UIManager;
 	private enemyManager!: EnemyManager;
 	private worldItemManager!: WorldItemManager;
+	private playerManager!: MultiplayerManager;
 
 	constructor() {
 		super("Game");
@@ -74,6 +76,9 @@ export class Game extends Scene {
 
 		this.enemyManager = new EnemyManager(this, this.mapManager);
 		this.registry.set("enemyManager", this.enemyManager);
+
+		this.playerManager = new MultiplayerManager(this);
+		this.registry.set("playerManager", this.playerManager);
 	}
 
 	private setupPlayer(
@@ -110,7 +115,11 @@ export class Game extends Scene {
 			saveData: saveData?.maps.map1.enemies,
 		});
 
-		this.webSocketService = new WebSocketService(this, this.uiManager);
+		this.webSocketService = new WebSocketService(
+			this,
+			this.uiManager,
+			this.playerManager
+		);
 		this.webSocketService.initializeConnection(
 			this.player.getSprite().x,
 			this.player.getSprite().y,

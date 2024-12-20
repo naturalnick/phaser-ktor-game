@@ -21,8 +21,8 @@ interface EnemyConfig {
 }
 
 export class Enemy {
-	private scene: Scene;
 	public readonly id: number;
+	private scene: Scene;
 	private _sprite: Phaser.Physics.Arcade.Sprite;
 	private damage: number;
 	private speed: number;
@@ -31,7 +31,6 @@ export class Enemy {
 	private obstructed: boolean = false;
 	private isMoving: boolean = false;
 	private moveTimer?: Phaser.Time.TimerEvent;
-	private _target?: Phaser.Physics.Arcade.Sprite; // maybe remove this and use detectionManager.target
 	private detectionManager: DetectionManager;
 	private attackDelay: number;
 	private lastAttackTime: number = 0;
@@ -52,8 +51,8 @@ export class Enemy {
 	}
 
 	constructor(scene: Scene, config: EnemyConfig) {
-		this.scene = scene;
 		this.id = config.id;
+		this.scene = scene;
 		this.damage = config.damage || 10;
 		this.speed = config.speed || 50;
 		this.canAttack = config.canAttack ?? true;
@@ -86,6 +85,14 @@ export class Enemy {
 
 		this.setupPhysics();
 		this.startMovementCycle();
+	}
+
+	public updatePlayerPosition(id: string, x: number, y: number): void {
+		this.detectionManager.updatePlayerPosition(id, x, y);
+	}
+
+	public removePlayer(id: string): void {
+		this.detectionManager.removePlayer(id);
 	}
 
 	private createHealthBar(): void {
@@ -178,12 +185,7 @@ export class Enemy {
 	}
 
 	private moveTowardsTarget(): void {
-		if (
-			!this._target ||
-			!this.isMoving ||
-			!this.detectionManager.lastTargetPosition
-		)
-			return;
+		if (!this.isMoving || !this.detectionManager.lastTargetPosition) return;
 
 		const dx = this.detectionManager.lastTargetPosition.x - this.sprite.x;
 		const dy = this.detectionManager.lastTargetPosition.y - this.sprite.y;
@@ -220,13 +222,13 @@ export class Enemy {
 
 	private setSpriteDepth(): void {
 		if (
-			(this._target?.y ?? 0) < this.sprite.y &&
+			(this.detectionManager.player?.y ?? 0) < this.sprite.y &&
 			this.currentSpriteDepth !== 2.9
 		) {
 			this.sprite.setDepth(3.5);
 			this.currentSpriteDepth = 2.5;
 		} else if (
-			(this._target?.y ?? 0) > this.sprite.y &&
+			(this.detectionManager.player?.y ?? 0) > this.sprite.y &&
 			this.currentSpriteDepth !== 3.1
 		) {
 			this.sprite.setDepth(2.5);
@@ -297,8 +299,7 @@ export class Enemy {
 	}
 
 	public setTarget(target: Phaser.Physics.Arcade.Sprite): void {
-		this._target = target;
-		this.detectionManager.target = target;
+		this.detectionManager.player = target;
 	}
 
 	public update(): void {
@@ -329,8 +330,6 @@ export class Enemy {
 			this.healthBar.destroy();
 		}
 
-		this._target = undefined;
-		this.detectionManager.lastTargetPosition = undefined;
-		this.setTileLayers(undefined);
+		this.detectionManager.destroy();
 	}
 }
