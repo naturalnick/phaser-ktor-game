@@ -103,14 +103,12 @@ export class Game extends Scene {
 	private setupGame(saveData?: any): void {
 		this.mapManager.setupPlayerTransitions(this.player.getSprite());
 
-		this.enemyManager.createEnemiesFromMap(
-			this.mapManager.getCurrentMap()!,
-			saveData?.maps.map1.enemies
-		);
-		this.enemyManager.setupCollisions(
-			this.player.getSprite(),
-			this.mapManager.getCollisionLayers()
-		);
+		this.enemyManager.initialize({
+			player: this.player.getSprite(),
+			collisionLayers: this.mapManager.getCollisionLayers(),
+			saveData: saveData?.maps.map1.enemies,
+		});
+
 		this.registry.set("enemyManager", this.enemyManager);
 
 		this.webSocketService = new WebSocketService(this, this.uiManager);

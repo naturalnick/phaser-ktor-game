@@ -125,7 +125,6 @@ export class MapManager {
 					layer.setDepth(config.depth);
 
 					if (config.properties.collides) {
-						console.log(config.properties.collides == true);
 						layer.setCollisionByProperty({ collides: true });
 					}
 

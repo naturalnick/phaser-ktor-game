@@ -1,4 +1,5 @@
 import { Scene, Types } from "phaser";
+import { AttackManager } from "../managers/AttackManager";
 import { HealthManager } from "../managers/HealthManager";
 import { InventoryManager } from "../managers/InventoryManager";
 import { MapManager } from "../managers/MapManager";
@@ -28,6 +29,9 @@ export class MainPlayer extends BasePlayer {
 	private dKey: Phaser.Input.Keyboard.Key;
 	private facingDirection: FacingDirection = "DOWN";
 	private healthManager: HealthManager;
+	private attackManager: AttackManager;
+	private rangeIndicator: Phaser.GameObjects.Graphics;
+	private showRange: boolean = true;
 
 	constructor(
 		scene: Scene,
@@ -51,6 +55,22 @@ export class MainPlayer extends BasePlayer {
 			},
 		});
 
+		this.attackManager = new AttackManager(scene, this, {
+			cooldown: stats.attackCooldown || 500,
+			range: stats.attackRange || 40,
+			damage: stats.attackDamage || 20,
+		});
+
+		this.createRangeIndicator();
+
+		// Add key to toggle range visibility
+		scene.input.keyboard?.addKey("R").on("down", () => {
+			this.showRange = !this.showRange;
+			if (!this.showRange) {
+				this.rangeIndicator.clear();
+			}
+		});
+
 		if (scene.input.keyboard) {
 			this.cursors = scene.input.keyboard.createCursorKeys();
 			this.interactKey = scene.input.keyboard.addKey("E");
@@ -70,7 +90,6 @@ export class MainPlayer extends BasePlayer {
 	}
 
 	public loadSaveData(saveData: PlayerSaveData): void {
-		// Load health
 		this.healthManager = new HealthManager(
 			this.scene,
 			saveData.health.max,
@@ -256,8 +275,8 @@ export class MainPlayer extends BasePlayer {
 				}
 
 				if (consumed) {
-					SaveManager.saveGame(this.scene);
 					this.inventory.removeItem(selectedSlot, 1);
+					SaveManager.saveGame(this.scene);
 					this.updateInventoryUI();
 				}
 			}
@@ -289,6 +308,38 @@ export class MainPlayer extends BasePlayer {
 		return this.mapManager.getCurrentMapId();
 	}
 
+	public getFacingDirection(): FacingDirection {
+		return this.facingDirection;
+	}
+
+	private createRangeIndicator(): void {
+		this.rangeIndicator = this.scene.add.graphics();
+		this.updateRangeIndicator();
+	}
+
+	// not currently accurate due to custom range offsets - keep to use later
+	private updateRangeIndicator(): void {
+		if (!this.rangeIndicator || !this.showRange) return;
+
+		this.rangeIndicator.clear();
+
+		// Semi-transparent blue circle
+		this.rangeIndicator.lineStyle(2, 0x4444ff, 0.3);
+		this.rangeIndicator.strokeCircle(
+			this.sprite.x,
+			this.sprite.y,
+			this.attackManager.getRange()
+		);
+
+		// Very faint fill
+		this.rangeIndicator.fillStyle(0x4444ff, 0.1);
+		this.rangeIndicator.fillCircle(
+			this.sprite.x,
+			this.sprite.y,
+			this.attackManager.getRange()
+		);
+	}
+
 	public update(): void {
 		if (!this.cursors || !this.sprite.body) return;
 
@@ -298,6 +349,7 @@ export class MainPlayer extends BasePlayer {
 		const rightPressed = this.cursors.right.isDown || this.dKey.isDown;
 
 		this.updateVelocity(upPressed, downPressed, leftPressed, rightPressed);
+		this.updateRangeIndicator();
 	}
 
 	public destroy(): void {
@@ -309,5 +361,7 @@ export class MainPlayer extends BasePlayer {
 		this.aKey.destroy();
 		this.sKey.destroy();
 		this.dKey.destroy();
+		this.attackManager.destroy();
+		this.rangeIndicator.destroy();
 	}
 }

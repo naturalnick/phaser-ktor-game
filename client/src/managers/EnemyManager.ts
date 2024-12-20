@@ -3,117 +3,137 @@ import { Enemy } from "../entities/Enemy";
 import { EnemySaveData } from "../types/SaveData";
 import { MapManager } from "./MapManager";
 
+interface EnemySetupConfig {
+	player: Phaser.Physics.Arcade.Sprite;
+	collisionLayers: Phaser.Tilemaps.TilemapLayer[];
+	saveData?: EnemySaveData[];
+}
+
 export class EnemyManager {
 	private scene: Scene;
 	private enemies: Enemy[] = [];
-	private playerSprite?: Phaser.Physics.Arcade.Sprite;
 	private mapManager: MapManager;
+	private setupComplete: boolean = false;
 
 	constructor(scene: Scene, mapManager: MapManager) {
 		this.scene = scene;
 		this.mapManager = mapManager;
 	}
 
-	public createEnemiesFromMap(
+	public initialize(config: EnemySetupConfig): void {
+		const map = this.mapManager.getCurrentMap();
+		if (!map) {
+			console.warn("No map available for enemy initialization");
+			return;
+		}
+
+		this.createAndSetupEnemies(map, config);
+	}
+
+	private createAndSetupEnemies(
 		map: Phaser.Tilemaps.Tilemap,
-		saveData?: EnemySaveData[]
+		config: EnemySetupConfig
 	): void {
 		const enemyLayer = map.getObjectLayer("Enemies");
-
 		if (!enemyLayer) {
 			console.warn("No enemy layer found in the map");
 			return;
 		}
 
+		// Clear existing enemies if any
+		this.destroy();
+
 		enemyLayer.objects.forEach((enemyObj) => {
-			const enemySave = saveData?.find((e) => e.id === enemyObj.id);
+			// Check saved position
+			const enemySave = config.saveData?.find(
+				(e) => e.id === enemyObj.id
+			);
 			if (enemySave) {
 				enemyObj.x = enemySave.x;
 				enemyObj.y = enemySave.y;
 			}
 
+			// Create enemy with properties from map
 			const enemy = new Enemy(this.scene, {
 				id: enemyObj.id,
 				x: enemyObj.x || 0,
 				y: enemyObj.y || 0,
-				damage:
-					enemyObj.properties?.find((p: any) => p.name === "damage")
-						?.value || 10,
-				speed:
-					enemyObj.properties?.find((p: any) => p.name === "speed")
-						?.value || 30,
-				canAttack:
-					enemyObj.properties?.find(
-						(p: any) => p.name === "canAttack"
-					)?.value ?? true,
-				attackDelay:
-					enemyObj.properties?.find(
-						(p: any) => p.name === "attackDelay"
-					)?.value || 1000,
-				moveDelay:
-					enemyObj.properties?.find(
-						(p: any) => p.name === "moveDelay"
-					)?.value || 2000,
+				health: this.getPropertyValue(enemyObj, "health", 100),
+				damage: this.getPropertyValue(enemyObj, "damage", 10),
+				speed: this.getPropertyValue(enemyObj, "speed", 30),
+				canAttack: this.getPropertyValue(enemyObj, "canAttack", true),
+				attackDelay: this.getPropertyValue(
+					enemyObj,
+					"attackDelay",
+					1000
+				),
+				moveDelay: this.getPropertyValue(enemyObj, "moveDelay", 2000),
 			});
 
-			if (this.playerSprite) {
-				enemy.setTarget(this.playerSprite);
-				// Give enemy all network player targets
-			}
-			enemy.setTileLayers(this.mapManager.getCollisionLayers());
+			// Set up enemy
+			enemy.setTarget(config.player);
+			enemy.setTileLayers(config.collisionLayers);
 
+			// Register enemy type for combat system
+			const sprite = enemy.getSprite();
+			sprite.setData("type", "enemy");
+			sprite.name = `enemy-${enemy.id}`;
+
+			this.setupEnemyCollisions(enemy, config);
 			this.enemies.push(enemy);
 		});
+
+		this.setupComplete = true;
 	}
 
-	public setPlayerTarget(player: Phaser.Physics.Arcade.Sprite): void {
-		this.playerSprite = player;
-		this.enemies.forEach((enemy) => enemy.setTarget(player));
+	private getPropertyValue(
+		obj: Phaser.Types.Tilemaps.TiledObject,
+		propertyName: string,
+		defaultValue: any
+	): any {
+		return (
+			obj.properties?.find((p: any) => p.name === propertyName)?.value ??
+			defaultValue
+		);
 	}
 
-	public setupCollisions(
-		player: Phaser.Physics.Arcade.Sprite,
-		collisionLayers: Phaser.Tilemaps.TilemapLayer[]
-	): void {
-		this.setPlayerTarget(player);
+	private setupEnemyCollisions(enemy: Enemy, config: EnemySetupConfig): void {
+		// Player collision
+		this.scene.physics.add.overlap(config.player, enemy.getSprite(), () =>
+			enemy.handlePlayerCollision(config.player)
+		);
 
-		this.enemies.forEach((enemy) => {
-			// Add collision with the player
-			this.scene.physics.add.overlap(player, enemy.getSprite(), () =>
-				enemy.handlePlayerCollision(player)
+		// Map collision
+		config.collisionLayers.forEach((layer) => {
+			this.scene.physics.add.collider(enemy.getSprite(), layer, () =>
+				enemy.handleMapCollision()
 			);
+		});
 
-			// Add collision with the map
-			collisionLayers.forEach((layer) => {
-				this.scene.physics.add.collider(enemy.getSprite(), layer, () =>
-					enemy.handleMapCollision()
-				);
-			});
-
-			// Add collision between enemies
-			this.enemies.forEach((otherEnemy) => {
-				if (enemy !== otherEnemy) {
-					this.scene.physics.add.collider(
-						enemy.getSprite(),
-						otherEnemy.getSprite()
-					);
-				}
-			});
-
-			const mapBounds = this.mapManager.getMapBounds();
-			if (mapBounds) {
-				const sprite = enemy.getSprite();
-				sprite.setCollideWorldBounds(true);
-				(sprite.body as Phaser.Physics.Arcade.Body).setBoundsRectangle(
-					new Phaser.Geom.Rectangle(
-						0,
-						0,
-						mapBounds.width,
-						mapBounds.height
-					)
+		// Enemy-to-enemy collision
+		this.enemies.forEach((otherEnemy) => {
+			if (enemy !== otherEnemy) {
+				this.scene.physics.add.collider(
+					enemy.getSprite(),
+					otherEnemy.getSprite()
 				);
 			}
 		});
+
+		// World bounds
+		const mapBounds = this.mapManager.getMapBounds();
+		if (mapBounds) {
+			const sprite = enemy.getSprite();
+			sprite.setCollideWorldBounds(true);
+			(sprite.body as Phaser.Physics.Arcade.Body).setBoundsRectangle(
+				new Phaser.Geom.Rectangle(
+					0,
+					0,
+					mapBounds.width,
+					mapBounds.height
+				)
+			);
+		}
 	}
 
 	public getEnemySaveData(): EnemySaveData[] {
@@ -121,11 +141,14 @@ export class EnemyManager {
 	}
 
 	public update(): void {
-		this.enemies.forEach((enemy) => enemy.update());
+		if (this.setupComplete) {
+			this.enemies.forEach((enemy) => enemy.update());
+		}
 	}
 
 	public destroy(): void {
 		this.enemies.forEach((enemy) => enemy.destroy());
 		this.enemies = [];
+		this.setupComplete = false;
 	}
 }

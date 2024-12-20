@@ -1,22 +1,24 @@
 import { Scene } from "phaser";
+import { HealthManager } from "../managers/HealthManager";
 import { EnemySaveData } from "../types/SaveData";
 
 interface EnemyConfig {
 	id: number;
 	x: number;
 	y: number;
+	health: number;
 	damage?: number;
 	speed?: number;
 	canAttack?: boolean;
 	attackDelay?: number;
-	moveDelay?: number; // milliseconds
+	moveDelay?: number;
 	detectionRadius?: number;
 	escapeRadius?: number;
 }
 
 export class Enemy {
 	private scene: Scene;
-	private id: number;
+	public id: number;
 	private sprite: Phaser.Physics.Arcade.Sprite;
 	private damage: number;
 	private speed: number;
@@ -34,7 +36,7 @@ export class Enemy {
 	private lastAttackTime: number = 0;
 	private currentSpriteDepth: number = 3;
 	private tileLayers?: Phaser.Tilemaps.TilemapLayer[];
-	private playerHost?: string;
+	private healthManager: HealthManager;
 
 	constructor(scene: Scene, config: EnemyConfig) {
 		this.scene = scene;
@@ -47,21 +49,36 @@ export class Enemy {
 		this.detectionRadius = config.detectionRadius || 200;
 		this.escapeRadius = config.escapeRadius || 300;
 
+		// Create sprite and setup physics
 		this.sprite = scene.physics.add.sprite(config.x, config.y, "slime");
+		this.sprite.setData("type", "enemy");
+		this.sprite.setData("enemyInstance", this);
+		this.sprite.name = `enemy-${this.id}`;
 
-		this.setHitbox();
-		this.sprite.setDepth(this.currentSpriteDepth);
-		this.sprite.setCollideWorldBounds(true);
+		// Setup health manager
+		this.healthManager = new HealthManager(scene, config.health, {
+			onChange: (current, max) => {
+				this.onHealthChange(current, max);
+			},
+			onDeath: () => {
+				this.onDeath();
+			},
+		});
 
+		this.setupPhysics();
 		this.startMovementCycle();
 	}
 
-	private setHitbox() {
+	private setupPhysics(): void {
+		// Set up hitbox
 		const collisionRadius = this.sprite.width / 3;
 		const offsetX = (this.sprite.width - collisionRadius * 2) / 2;
 		const offsetY = this.sprite.height - collisionRadius * 2;
+
 		this.sprite.body?.setCircle(collisionRadius, offsetX, offsetY);
-		this.sprite.setScale(0.5); // temporary for this sprite which is 32x32
+		this.sprite.setScale(0.5);
+		this.sprite.setDepth(this.currentSpriteDepth);
+		this.sprite.setCollideWorldBounds(true);
 	}
 
 	private startMovementCycle(): void {
@@ -95,25 +112,17 @@ export class Enemy {
 			this.target.y
 		);
 
-		if (distance > this.escapeRadius) return false;
+		if (distance > this.escapeRadius) {
+			this.hasDetectedPlayer = false;
+			return false;
+		}
 
 		if (distance <= this.detectionRadius || this.hasDetectedPlayer) {
+			this.hasDetectedPlayer = true;
 			return true;
 		}
+
 		return false;
-	}
-
-	private startMoving(): void {
-		this.isMoving = true;
-	}
-
-	private stopMoving(): void {
-		this.isMoving = false;
-		this.sprite.setVelocity(0, 0);
-	}
-
-	public setTileLayers(layer: Phaser.Tilemaps.TilemapLayer[]): void {
-		this.tileLayers = layer;
 	}
 
 	private hasLineOfSight(): boolean {
@@ -126,24 +135,20 @@ export class Enemy {
 			this.target.y
 		);
 
-		// Use the first layer's tilemap properties (they should be the same for all layers)
 		const tileWidth = this.tileLayers[0].tilemap.tileWidth;
 		const tileHeight = this.tileLayers[0].tilemap.tileHeight;
-
-		// Get points along the ray
 		const points = ray.getPoints(0, Math.max(tileWidth, tileHeight));
 
-		// Check each point against all tile layers
 		for (const point of points) {
 			for (const layer of this.tileLayers) {
 				const tile = layer.getTileAtWorldXY(point.x, point.y);
 				if (tile && tile.collides) {
-					return false; // Line of sight is blocked
+					return false;
 				}
 			}
 		}
 
-		return true; // No collisions found in any layer
+		return true;
 	}
 
 	private moveTowardsTarget(): void {
@@ -152,22 +157,19 @@ export class Enemy {
 		const dx = this.lastTargetPosition.x - this.sprite.x;
 		const dy = this.lastTargetPosition.y - this.sprite.y;
 		const angle = Math.atan2(dy, dx);
+
 		this.sprite.setVelocityX(Math.cos(angle) * this.speed);
 		this.sprite.setVelocityY(Math.sin(angle) * this.speed);
-
 		this.sprite.setFlipX((this.sprite.body?.velocity.x ?? 0) > 0);
 	}
 
 	private moveRandomly(): void {
 		if (!this.isMoving) return;
-		// Check if enemy needs new direction
+
 		if (this.sprite.body?.velocity.length() === 0) {
 			const randomAngle = Math.random() * Math.PI * 2;
-
 			this.sprite.setVelocityX(Math.cos(randomAngle) * this.speed);
 			this.sprite.setVelocityY(Math.sin(randomAngle) * this.speed);
-
-			// Optional: Flip the sprite horizontally based on movement direction
 			this.sprite.setFlipX(Math.cos(randomAngle) > 0);
 		} else if (this.obstructed) {
 			this.sprite.setVelocityX(-(this.sprite.body?.velocity?.x ?? 0));
@@ -176,13 +178,22 @@ export class Enemy {
 		}
 	}
 
+	private startMoving(): void {
+		this.isMoving = true;
+	}
+
+	private stopMoving(): void {
+		this.isMoving = false;
+		this.sprite.setVelocity(0, 0);
+	}
+
 	private checkDetection(): void {
 		if (!this.target) return;
 
 		this.hasDetectedPlayer = this.isPlayerDetected();
-		const has = this.hasLineOfSight();
+		const hasLineOfSight = this.hasLineOfSight();
 
-		if (this.hasDetectedPlayer && has) {
+		if (this.hasDetectedPlayer && hasLineOfSight) {
 			this.lastTargetPosition = {
 				x: this.target.x,
 				y: this.target.y,
@@ -190,11 +201,7 @@ export class Enemy {
 		}
 	}
 
-	public setTarget(target: Phaser.Physics.Arcade.Sprite): void {
-		this.target = target;
-	}
-
-	private setSpriteDepth() {
+	private setSpriteDepth(): void {
 		if (
 			(this.target?.y ?? 0) < this.sprite.y &&
 			this.currentSpriteDepth !== 2.9
@@ -210,8 +217,28 @@ export class Enemy {
 		}
 	}
 
+	private onHealthChange(current: number, max: number): void {
+		// Add visual feedback when health changes
+		this.scene.tweens.add({
+			targets: this.sprite,
+			alpha: 0.5,
+			duration: 100,
+			yoyo: true,
+			repeat: 1,
+			ease: "Linear",
+		});
+	}
+
+	public setTarget(target: Phaser.Physics.Arcade.Sprite): void {
+		this.target = target;
+	}
+
 	public getSprite(): Phaser.Physics.Arcade.Sprite {
 		return this.sprite;
+	}
+
+	public setTileLayers(layers: Phaser.Tilemaps.TilemapLayer[]): void {
+		this.tileLayers = layers;
 	}
 
 	public handlePlayerCollision(player: Phaser.Physics.Arcade.Sprite): void {
@@ -222,12 +249,14 @@ export class Enemy {
 			this.scene.events.emit("playerDamaged", this.damage);
 			this.lastAttackTime = currentTime;
 		}
-
-		this.obstructed = false;
 	}
 
 	public handleMapCollision(): void {
 		this.obstructed = true;
+	}
+
+	public takeDamage(amount: number): void {
+		this.healthManager.damage(amount);
 	}
 
 	public getEnemyPosition(): EnemySaveData {
@@ -235,7 +264,25 @@ export class Enemy {
 			id: this.id,
 			x: this.sprite.x,
 			y: this.sprite.y,
+			// health: this.healthManager.getCurrentHealth()
 		};
+	}
+
+	private onDeath(): void {
+		// Add death effects
+		this.scene.tweens.add({
+			targets: this.sprite,
+			alpha: 0,
+			y: this.sprite.y - 16,
+			duration: 200,
+			ease: "Power2",
+			onComplete: () => {
+				this.destroy();
+			},
+		});
+
+		// Emit death event for any listeners
+		this.scene.events.emit("enemyDeath", this.id);
 	}
 
 	public update(): void {
