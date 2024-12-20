@@ -19,8 +19,8 @@ interface EnemyConfig {
 
 export class Enemy {
 	private scene: Scene;
-	public id: number;
-	private sprite: Phaser.Physics.Arcade.Sprite;
+	public readonly id: number;
+	private _sprite: Phaser.Physics.Arcade.Sprite;
 	private damage: number;
 	private speed: number;
 	private canAttack: boolean;
@@ -43,6 +43,10 @@ export class Enemy {
 	private healthBarHeight: number = 4;
 	private showHealthBar: boolean;
 
+	get sprite(): Phaser.Physics.Arcade.Sprite {
+		return this._sprite;
+	}
+
 	constructor(scene: Scene, config: EnemyConfig) {
 		this.scene = scene;
 		this.id = config.id;
@@ -54,11 +58,10 @@ export class Enemy {
 		this.detectionRadius = config.detectionRadius || 200;
 		this.escapeRadius = config.escapeRadius || 300;
 
-		// Create sprite and setup physics
-		this.sprite = scene.physics.add.sprite(config.x, config.y, "slime");
-		this.sprite.setData("type", "enemy");
-		this.sprite.setData("enemyInstance", this);
-		this.sprite.name = `enemy-${this.id}`;
+		this._sprite = scene.physics.add.sprite(config.x, config.y, "slime");
+		this._sprite.setData("type", "enemy");
+		this._sprite.setData("enemyInstance", this);
+		this._sprite.name = `enemy-${this.id}`;
 
 		this.healthManager = new HealthManager(scene, config.health, {
 			onChange: (current, max) => {
@@ -124,7 +127,6 @@ export class Enemy {
 			this.healthBarHeight
 		);
 
-		// Update health bar position when sprite moves
 		this.healthBar.setDepth(this.sprite.depth + 0.1);
 	}
 
@@ -139,7 +141,6 @@ export class Enemy {
 	}
 
 	private setupPhysics(): void {
-		// Set up hitbox
 		const collisionRadius = this.sprite.width / 3;
 		const offsetX = (this.sprite.width - collisionRadius * 2) / 2;
 		const offsetY = this.sprite.height - collisionRadius * 2;
@@ -300,10 +301,6 @@ export class Enemy {
 
 	public setTarget(target: Phaser.Physics.Arcade.Sprite): void {
 		this.target = target;
-	}
-
-	public getSprite(): Phaser.Physics.Arcade.Sprite {
-		return this.sprite;
 	}
 
 	public setTileLayers(layers: Phaser.Tilemaps.TilemapLayer[]): void {

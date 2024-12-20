@@ -74,7 +74,7 @@ export class EnemyManager {
 			enemy.setTileLayers(config.collisionLayers);
 
 			// Register enemy type for combat system
-			const sprite = enemy.getSprite();
+			const sprite = enemy.sprite;
 			sprite.setData("type", "enemy");
 			sprite.name = `enemy-${enemy.id}`;
 
@@ -98,13 +98,13 @@ export class EnemyManager {
 
 	private setupEnemyCollisions(enemy: Enemy, config: EnemySetupConfig): void {
 		// Player collision
-		this.scene.physics.add.overlap(config.player, enemy.getSprite(), () =>
+		this.scene.physics.add.overlap(config.player, enemy.sprite, () =>
 			enemy.handlePlayerCollision(config.player)
 		);
 
 		// Map collision
 		config.collisionLayers.forEach((layer) => {
-			this.scene.physics.add.collider(enemy.getSprite(), layer, () =>
+			this.scene.physics.add.collider(enemy.sprite, layer, () =>
 				enemy.handleMapCollision()
 			);
 		});
@@ -113,8 +113,8 @@ export class EnemyManager {
 		this.enemies.forEach((otherEnemy) => {
 			if (enemy !== otherEnemy) {
 				this.scene.physics.add.collider(
-					enemy.getSprite(),
-					otherEnemy.getSprite()
+					enemy.sprite,
+					otherEnemy.sprite
 				);
 			}
 		});
@@ -122,7 +122,7 @@ export class EnemyManager {
 		// World bounds
 		const mapBounds = this.mapManager.getMapBounds();
 		if (mapBounds) {
-			const sprite = enemy.getSprite();
+			const sprite = enemy.sprite;
 			sprite.setCollideWorldBounds(true);
 			(sprite.body as Phaser.Physics.Arcade.Body).setBoundsRectangle(
 				new Phaser.Geom.Rectangle(

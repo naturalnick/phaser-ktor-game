@@ -178,7 +178,13 @@ export class MainPlayer extends BasePlayer {
 		this.sprite.setVelocityY(velocityY);
 
 		// Handle idle state
-		if (!upPressed && !downPressed && !leftPressed && !rightPressed) {
+		if (
+			!upPressed &&
+			!downPressed &&
+			!leftPressed &&
+			!rightPressed &&
+			!this.attackManager.isAttacking
+		) {
 			this.sprite.anims.pause();
 		}
 	}
@@ -338,7 +344,7 @@ export class MainPlayer extends BasePlayer {
 		this.rangeIndicator.strokeCircle(
 			this.sprite.x,
 			this.sprite.y,
-			this.attackManager.getRange()
+			this.attackManager.range
 		);
 
 		// Very faint fill
@@ -346,7 +352,7 @@ export class MainPlayer extends BasePlayer {
 		this.rangeIndicator.fillCircle(
 			this.sprite.x,
 			this.sprite.y,
-			this.attackManager.getRange()
+			this.attackManager.range
 		);
 	}
 

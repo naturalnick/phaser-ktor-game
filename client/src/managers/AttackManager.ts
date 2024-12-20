@@ -12,17 +12,29 @@ export class AttackManager {
 	private scene: Scene;
 	private player: MainPlayer;
 	private attackKey: Phaser.Input.Keyboard.Key;
-	private isAttacking: boolean = false;
+	private _isAttacking: boolean = false;
 	private cooldown: number;
-	private range: number;
+	private _range: number;
 	private damage: number;
 	private lastAttackTime: number = 0;
+
+	get isAttacking(): boolean {
+		return this._isAttacking;
+	}
+
+	get range(): number {
+		return this._range;
+	}
+
+	set range(range: number) {
+		this._range = range;
+	}
 
 	constructor(scene: Scene, player: MainPlayer, config: AttackConfig = {}) {
 		this.scene = scene;
 		this.player = player;
 		this.cooldown = config.cooldown || 500;
-		this.range = config.range || 30;
+		this._range = config.range || 30;
 		this.damage = config.damage || 20;
 
 		if (scene.input.keyboard) {
@@ -43,7 +55,7 @@ export class AttackManager {
 			return; // Still in cooldown
 		}
 
-		this.isAttacking = true;
+		this._isAttacking = true;
 		this.lastAttackTime = currentTime;
 
 		this.playAttackAnimation();
@@ -53,7 +65,7 @@ export class AttackManager {
 
 		// Reset attack state after a short duration
 		this.scene.time.delayedCall(200, () => {
-			this.isAttacking = false;
+			this._isAttacking = false;
 		});
 	}
 
@@ -133,14 +145,6 @@ export class AttackManager {
 
 	public setCooldown(cooldown: number): void {
 		this.cooldown = cooldown;
-	}
-
-	public setRange(range: number): void {
-		this.range = range;
-	}
-
-	public getRange(): number {
-		return this.range;
 	}
 
 	public setDamage(damage: number): void {
