@@ -13,7 +13,7 @@
         },
         "maps/map1.tmj": {
             "scale": 1.95,
-            "selectedLayer": 4,
+            "selectedLayer": 1,
             "viewCenter": {
                 "x": 372.0512820512821,
                 "y": 192.30769230769232
@@ -27,7 +27,7 @@
         },
         "maps/map1.tmj#Trees_shadow_source": {
             "scaleInDock": 1,
-            "scaleInEditor": 1
+            "scaleInEditor": 12.1642
         },
         "tilesets/FG_Grounds.tsj": {
             "scaleInDock": 1,

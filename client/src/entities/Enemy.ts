@@ -14,6 +14,7 @@ interface EnemyConfig {
 	moveDelay?: number;
 	detectionRadius?: number;
 	escapeRadius?: number;
+	showHealthBar?: boolean;
 }
 
 export class Enemy {
@@ -37,6 +38,10 @@ export class Enemy {
 	private currentSpriteDepth: number = 3;
 	private tileLayers?: Phaser.Tilemaps.TilemapLayer[];
 	private healthManager: HealthManager;
+	private healthBar?: Phaser.GameObjects.Graphics;
+	private healthBarWidth: number;
+	private healthBarHeight: number = 4;
+	private showHealthBar: boolean;
 
 	constructor(scene: Scene, config: EnemyConfig) {
 		this.scene = scene;
@@ -55,7 +60,6 @@ export class Enemy {
 		this.sprite.setData("enemyInstance", this);
 		this.sprite.name = `enemy-${this.id}`;
 
-		// Setup health manager
 		this.healthManager = new HealthManager(scene, config.health, {
 			onChange: (current, max) => {
 				this.onHealthChange(current, max);
@@ -64,9 +68,74 @@ export class Enemy {
 				this.onDeath();
 			},
 		});
+		this.showHealthBar = config.showHealthBar ?? false;
+		if (this.showHealthBar) {
+			this.createHealthBar();
+		}
 
 		this.setupPhysics();
 		this.startMovementCycle();
+	}
+
+	private createHealthBar(): void {
+		console.log(this.sprite.width);
+		this.healthBarWidth = this.sprite.width * 0.75;
+		this.healthBar = this.scene.add.graphics();
+		this.updateHealthBar();
+
+		// Set the depth slightly higher than the sprite to ensure it renders above
+		this.healthBar.setDepth(this.currentSpriteDepth + 0.1);
+	}
+
+	private updateHealthBar(): void {
+		if (!this.healthBar || !this.showHealthBar) return;
+
+		// Clear the previous health bar
+		this.healthBar.clear();
+
+		// Calculate health percentage
+		const healthPercent =
+			this.healthManager.getCurrentHealth() /
+			this.healthManager.getMaxHealth();
+
+		// Calculate position (centered above the sprite)
+		const barX = this.sprite.x - this.healthBarWidth / 2;
+		const barY =
+			this.sprite.y -
+			this.sprite.displayHeight / 2 -
+			this.healthBarHeight -
+			5;
+
+		// Draw background (gray)
+		this.healthBar.fillStyle(0x808080, 0.8);
+		this.healthBar.fillRect(
+			barX,
+			barY,
+			this.healthBarWidth,
+			this.healthBarHeight
+		);
+
+		// Draw health (green)
+		this.healthBar.fillStyle(0x00ff00, 1);
+		this.healthBar.fillRect(
+			barX,
+			barY,
+			this.healthBarWidth * healthPercent,
+			this.healthBarHeight
+		);
+
+		// Update health bar position when sprite moves
+		this.healthBar.setDepth(this.sprite.depth + 0.1);
+	}
+
+	public setHealthBarVisible(visible: boolean): void {
+		this.showHealthBar = visible;
+		if (visible && !this.healthBar) {
+			this.createHealthBar();
+		} else if (!visible && this.healthBar) {
+			this.healthBar.destroy();
+			this.healthBar = undefined;
+		}
 	}
 
 	private setupPhysics(): void {
@@ -287,13 +356,13 @@ export class Enemy {
 
 	public update(): void {
 		this.checkDetection();
+		this.updateHealthBar();
 
 		if (this.hasDetectedPlayer && this.isMoving) {
 			this.moveTowardsTarget();
 		} else if (this.isMoving) {
 			this.moveRandomly();
 		}
-
 		this.setSpriteDepth();
 	}
 
@@ -304,6 +373,10 @@ export class Enemy {
 
 		if (this.moveTimer) {
 			this.moveTimer.destroy();
+		}
+
+		if (this.healthBar) {
+			this.healthBar.destroy();
 		}
 
 		this.target = undefined;

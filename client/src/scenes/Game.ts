@@ -73,6 +73,7 @@ export class Game extends Scene {
 		this.registry.set("worldItemManager", this.worldItemManager);
 
 		this.enemyManager = new EnemyManager(this, this.mapManager);
+		this.registry.set("enemyManager", this.enemyManager);
 	}
 
 	private setupPlayer(
@@ -108,8 +109,6 @@ export class Game extends Scene {
 			collisionLayers: this.mapManager.getCollisionLayers(),
 			saveData: saveData?.maps.map1.enemies,
 		});
-
-		this.registry.set("enemyManager", this.enemyManager);
 
 		this.webSocketService = new WebSocketService(this, this.uiManager);
 		this.webSocketService.initializeConnection(

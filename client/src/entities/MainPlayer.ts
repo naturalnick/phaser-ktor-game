@@ -1,5 +1,6 @@
 import { Scene, Types } from "phaser";
 import { AttackManager } from "../managers/AttackManager";
+import { EnemyManager } from "../managers/EnemyManager";
 import { HealthManager } from "../managers/HealthManager";
 import { InventoryManager } from "../managers/InventoryManager";
 import { MapManager } from "../managers/MapManager";
@@ -27,6 +28,7 @@ export class MainPlayer extends BasePlayer {
 	private aKey: Phaser.Input.Keyboard.Key;
 	private sKey: Phaser.Input.Keyboard.Key;
 	private dKey: Phaser.Input.Keyboard.Key;
+	private hKey: Phaser.Input.Keyboard.Key;
 	private facingDirection: FacingDirection = "DOWN";
 	private healthManager: HealthManager;
 	private attackManager: AttackManager;
@@ -71,6 +73,13 @@ export class MainPlayer extends BasePlayer {
 			}
 		});
 
+		const enemyManager = scene.registry.get("enemyManager") as EnemyManager;
+
+		scene.input.keyboard?.addKey("H").on("down", () => {
+			enemyManager.toggleHealthBars();
+			uiManager.updateIgnoreList();
+		});
+
 		if (scene.input.keyboard) {
 			this.cursors = scene.input.keyboard.createCursorKeys();
 			this.interactKey = scene.input.keyboard.addKey("E");
@@ -84,6 +93,7 @@ export class MainPlayer extends BasePlayer {
 
 		this.setupItemInteraction();
 		this.updateUI();
+
 		scene.events.on("playerDamaged", this.damage, this);
 		scene.events.on("itemDropped", this.tryDropItem, this);
 		scene.events.on("moveItems", this.handleMoveItems, this);
@@ -224,7 +234,7 @@ export class MainPlayer extends BasePlayer {
 				if (this.inventory.addItem(itemKey)) {
 					this.worldItemManager.removeItem(worldItem);
 					this.updateInventoryUI();
-					// SaveManager.saveItemState(this.scene);
+					SaveManager.saveItemState(this.scene);
 					break;
 				}
 			}
@@ -246,7 +256,7 @@ export class MainPlayer extends BasePlayer {
 
 			this.updateInventoryUI();
 			this.uiManager.updateIgnoreList();
-			// SaveManager.saveItemState(this.scene);
+			SaveManager.saveItemState(this.scene);
 		}
 	}
 

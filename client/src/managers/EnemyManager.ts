@@ -14,6 +14,7 @@ export class EnemyManager {
 	private enemies: Enemy[] = [];
 	private mapManager: MapManager;
 	private setupComplete: boolean = false;
+	private showHealthBars: boolean = false;
 
 	constructor(scene: Scene, mapManager: MapManager) {
 		this.scene = scene;
@@ -44,7 +45,6 @@ export class EnemyManager {
 		this.destroy();
 
 		enemyLayer.objects.forEach((enemyObj) => {
-			// Check saved position
 			const enemySave = config.saveData?.find(
 				(e) => e.id === enemyObj.id
 			);
@@ -53,7 +53,6 @@ export class EnemyManager {
 				enemyObj.y = enemySave.y;
 			}
 
-			// Create enemy with properties from map
 			const enemy = new Enemy(this.scene, {
 				id: enemyObj.id,
 				x: enemyObj.x || 0,
@@ -68,9 +67,9 @@ export class EnemyManager {
 					1000
 				),
 				moveDelay: this.getPropertyValue(enemyObj, "moveDelay", 2000),
+				showHealthBar: this.showHealthBars,
 			});
 
-			// Set up enemy
 			enemy.setTarget(config.player);
 			enemy.setTileLayers(config.collisionLayers);
 
@@ -134,6 +133,13 @@ export class EnemyManager {
 				)
 			);
 		}
+	}
+
+	public toggleHealthBars(): void {
+		this.showHealthBars = !this.showHealthBars;
+		this.enemies.forEach((enemy) =>
+			enemy.setHealthBarVisible(this.showHealthBars)
+		);
 	}
 
 	public getEnemySaveData(): EnemySaveData[] {
