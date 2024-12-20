@@ -46,7 +46,7 @@ export class Game extends Scene {
 			targetMap?: string;
 			playerPosition?: { x: number; y: number };
 		};
-
+		this.registry.set("currentMapId", sceneData?.targetMap || "map1");
 		await this.mapManager.loadMap(sceneData?.targetMap || "map1");
 		const mapBounds = this.mapManager.getMapBounds();
 

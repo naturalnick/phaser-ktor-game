@@ -31,7 +31,7 @@ export class Enemy {
 	private obstructed: boolean = false;
 	private isMoving: boolean = false;
 	private moveTimer?: Phaser.Time.TimerEvent;
-	private _target?: Phaser.Physics.Arcade.Sprite;
+	private _target?: Phaser.Physics.Arcade.Sprite; // maybe remove this and use detectionManager.target
 	private detectionManager: DetectionManager;
 	private attackDelay: number;
 	private lastAttackTime: number = 0;
@@ -41,6 +41,11 @@ export class Enemy {
 	private healthBarWidth: number;
 	private healthBarHeight: number = 4;
 	private showHealthBar: boolean;
+	private _localControlEnabled: boolean = true;
+
+	set localControlEnabled(enabled: boolean) {
+		this._localControlEnabled = enabled;
+	}
 
 	get sprite(): Phaser.Physics.Arcade.Sprite {
 		return this._sprite;
@@ -84,7 +89,6 @@ export class Enemy {
 	}
 
 	private createHealthBar(): void {
-		console.log(this.sprite.width);
 		this.healthBarWidth = this.sprite.width * 0.75;
 		this.healthBar = this.scene.add.graphics();
 		this.updateHealthBar();
@@ -300,10 +304,13 @@ export class Enemy {
 	public update(): void {
 		this.detectionManager.checkDetection();
 		this.updateHealthBar();
-
-		if (this.detectionManager.hasDetectedPlayer && this.isMoving) {
+		if (
+			this.detectionManager.hasDetectedPlayer &&
+			this.isMoving &&
+			this._localControlEnabled
+		) {
 			this.moveTowardsTarget();
-		} else if (this.isMoving) {
+		} else if (this.isMoving && this._localControlEnabled) {
 			this.moveRandomly();
 		}
 		this.setSpriteDepth();

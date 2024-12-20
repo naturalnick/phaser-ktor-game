@@ -1,0 +1,58 @@
+{
+    "Map/SizeTest": {
+        "height": 4300,
+        "width": 2
+    },
+    "activeFile": "",
+    "expandedProjectPaths": [
+    ],
+    "fileStates": {
+        "": {
+            "scaleInDock": 1,
+            "scaleInEditor": 1.81
+        },
+        "maps/map1.tmj": {
+            "scale": 1.95,
+            "selectedLayer": 1,
+            "viewCenter": {
+                "x": 372.0512820512821,
+                "y": 192.30769230769232
+            }
+        },
+        "maps/map1.tmj#FG_Forest_Summer": {
+            "scaleInDock": 1.4431
+        },
+        "maps/map1.tmj#FG_Grounds": {
+            "scaleInDock": 1
+        },
+        "maps/map1.tmj#Trees_shadow_source": {
+            "scaleInDock": 1,
+            "scaleInEditor": 12.1642
+        },
+        "tilesets/FG_Grounds.tsj": {
+            "scaleInDock": 1,
+            "scaleInEditor": 1
+        }
+    },
+    "last.exportedFilePath": "/Users/nick/Developer/phaser-ktor-game/client/public/assets/tilesets",
+    "last.imagePath": "/Users/nick/Developer/phaser-ktor-game/client/public/assets/tilesets",
+    "lastUsedTilesetExportFilter": "Tiled tileset files (*.tsx *.xml)",
+    "map.lastUsedFormat": "json",
+    "map.tileHeight": 16,
+    "map.tileWidth": 16,
+    "openFiles": [
+        "maps/map1.tmj"
+    ],
+    "project": "game.tiled-project",
+    "property.type": "bool",
+    "recentFiles": [
+        "maps/map1.tmj",
+        "tilesets/FG_Grounds.tsj"
+    ],
+    "tileset.embedInMap": true,
+    "tileset.lastUsedFormat": "json",
+    "tileset.tileSize": {
+        "height": 16,
+        "width": 16
+    }
+}

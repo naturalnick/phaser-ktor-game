@@ -15,6 +15,7 @@ export class EnemyManager {
 	private mapManager: MapManager;
 	private setupComplete: boolean = false;
 	private showHealthBars: boolean = false;
+	private isControlledByHost: boolean = false;
 
 	constructor(scene: Scene, mapManager: MapManager) {
 		this.scene = scene;
@@ -85,6 +86,41 @@ export class EnemyManager {
 		this.setupComplete = true;
 	}
 
+	public updateEnemyPositions(enemyData: {
+		mapId: string;
+		enemies: EnemySaveData[];
+	}): void {
+		console.log("isControlledByHost", this.isControlledByHost);
+		if (this.isControlledByHost) return; // Skip if we're controlling the enemies
+
+		const currentMapId = this.mapManager.getCurrentMapId();
+		if (enemyData.mapId !== currentMapId) return;
+
+		enemyData.enemies.forEach((enemyUpdate) => {
+			const enemy = this.enemies.find((e) => e.id === enemyUpdate.id);
+			if (enemy) {
+				// Use Phaser's built-in interpolation for smooth movement
+				this.scene.tweens.add({
+					targets: enemy.sprite,
+					x: enemyUpdate.x,
+					y: enemyUpdate.y,
+					duration: 100, // Match the broadcast interval
+					ease: "Linear",
+				});
+			}
+		});
+	}
+
+	public setHostControl(isHost: boolean): void {
+		this.isControlledByHost = isHost;
+
+		// Update enemy behavior based on host status
+		this.enemies.forEach((enemy) => {
+			// If we're not the host, disable local movement logic
+			enemy.localControlEnabled = isHost;
+		});
+	}
+
 	private getPropertyValue(
 		obj: Phaser.Types.Tilemaps.TiledObject,
 		propertyName: string,
@@ -147,7 +183,7 @@ export class EnemyManager {
 	}
 
 	public update(): void {
-		if (this.setupComplete) {
+		if (this.setupComplete && this.isControlledByHost) {
 			this.enemies.forEach((enemy) => enemy.update());
 		}
 	}
