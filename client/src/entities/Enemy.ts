@@ -1,4 +1,5 @@
 import { Scene } from "phaser";
+import { DetectionManager } from "../managers/DetectionManager";
 import { HealthManager } from "../managers/HealthManager";
 import { EnemySaveData } from "../types/SaveData";
 
@@ -15,6 +16,8 @@ interface EnemyConfig {
 	detectionRadius?: number;
 	escapeRadius?: number;
 	showHealthBar?: boolean;
+	respawnTime?: number;
+	resetTime?: number;
 }
 
 export class Enemy {
@@ -28,15 +31,11 @@ export class Enemy {
 	private obstructed: boolean = false;
 	private isMoving: boolean = false;
 	private moveTimer?: Phaser.Time.TimerEvent;
-	private target?: Phaser.Physics.Arcade.Sprite;
-	private detectionRadius: number;
-	private escapeRadius: number;
-	private hasDetectedPlayer: boolean = false;
-	private lastTargetPosition?: { x: number; y: number } = undefined;
+	private _target?: Phaser.Physics.Arcade.Sprite;
+	private detectionManager: DetectionManager;
 	private attackDelay: number;
 	private lastAttackTime: number = 0;
 	private currentSpriteDepth: number = 3;
-	private tileLayers?: Phaser.Tilemaps.TilemapLayer[];
 	private healthManager: HealthManager;
 	private healthBar?: Phaser.GameObjects.Graphics;
 	private healthBarWidth: number;
@@ -55,13 +54,17 @@ export class Enemy {
 		this.canAttack = config.canAttack ?? true;
 		this.attackDelay = config.attackDelay || 1000;
 		this.moveDelay = config.moveDelay || 0;
-		this.detectionRadius = config.detectionRadius || 200;
-		this.escapeRadius = config.escapeRadius || 300;
 
 		this._sprite = scene.physics.add.sprite(config.x, config.y, "slime");
 		this._sprite.setData("type", "enemy");
 		this._sprite.setData("enemyInstance", this);
 		this._sprite.name = `enemy-${this.id}`;
+
+		this.detectionManager = new DetectionManager(
+			this._sprite,
+			config.detectionRadius,
+			config.escapeRadius
+		);
 
 		this.healthManager = new HealthManager(scene, config.health, {
 			onChange: (current, max) => {
@@ -93,10 +96,8 @@ export class Enemy {
 	private updateHealthBar(): void {
 		if (!this.healthBar || !this.showHealthBar) return;
 
-		// Clear the previous health bar
 		this.healthBar.clear();
 
-		// Calculate health percentage
 		const healthPercent =
 			this.healthManager.getCurrentHealth() /
 			this.healthManager.getMaxHealth();
@@ -172,60 +173,16 @@ export class Enemy {
 		this.startMoving();
 	}
 
-	private isPlayerDetected(): boolean {
-		if (!this.target) return false;
-
-		const distance = Phaser.Math.Distance.Between(
-			this.sprite.x,
-			this.sprite.y,
-			this.target.x,
-			this.target.y
-		);
-
-		if (distance > this.escapeRadius) {
-			this.hasDetectedPlayer = false;
-			return false;
-		}
-
-		if (distance <= this.detectionRadius || this.hasDetectedPlayer) {
-			this.hasDetectedPlayer = true;
-			return true;
-		}
-
-		return false;
-	}
-
-	private hasLineOfSight(): boolean {
-		if (!this.target || !this.tileLayers) return false;
-
-		const ray = new Phaser.Geom.Line(
-			this.sprite.x,
-			this.sprite.y,
-			this.target.x,
-			this.target.y
-		);
-
-		const tileWidth = this.tileLayers[0].tilemap.tileWidth;
-		const tileHeight = this.tileLayers[0].tilemap.tileHeight;
-		const points = ray.getPoints(0, Math.max(tileWidth, tileHeight));
-
-		for (const point of points) {
-			for (const layer of this.tileLayers) {
-				const tile = layer.getTileAtWorldXY(point.x, point.y);
-				if (tile && tile.collides) {
-					return false;
-				}
-			}
-		}
-
-		return true;
-	}
-
 	private moveTowardsTarget(): void {
-		if (!this.target || !this.isMoving || !this.lastTargetPosition) return;
+		if (
+			!this._target ||
+			!this.isMoving ||
+			!this.detectionManager.lastTargetPosition
+		)
+			return;
 
-		const dx = this.lastTargetPosition.x - this.sprite.x;
-		const dy = this.lastTargetPosition.y - this.sprite.y;
+		const dx = this.detectionManager.lastTargetPosition.x - this.sprite.x;
+		const dy = this.detectionManager.lastTargetPosition.y - this.sprite.y;
 		const angle = Math.atan2(dy, dx);
 
 		this.sprite.setVelocityX(Math.cos(angle) * this.speed);
@@ -257,29 +214,15 @@ export class Enemy {
 		this.sprite.setVelocity(0, 0);
 	}
 
-	private checkDetection(): void {
-		if (!this.target) return;
-
-		this.hasDetectedPlayer = this.isPlayerDetected();
-		const hasLineOfSight = this.hasLineOfSight();
-
-		if (this.hasDetectedPlayer && hasLineOfSight) {
-			this.lastTargetPosition = {
-				x: this.target.x,
-				y: this.target.y,
-			};
-		}
-	}
-
 	private setSpriteDepth(): void {
 		if (
-			(this.target?.y ?? 0) < this.sprite.y &&
+			(this._target?.y ?? 0) < this.sprite.y &&
 			this.currentSpriteDepth !== 2.9
 		) {
 			this.sprite.setDepth(3.5);
 			this.currentSpriteDepth = 2.5;
 		} else if (
-			(this.target?.y ?? 0) > this.sprite.y &&
+			(this._target?.y ?? 0) > this.sprite.y &&
 			this.currentSpriteDepth !== 3.1
 		) {
 			this.sprite.setDepth(2.5);
@@ -297,14 +240,6 @@ export class Enemy {
 			repeat: 1,
 			ease: "Linear",
 		});
-	}
-
-	public setTarget(target: Phaser.Physics.Arcade.Sprite): void {
-		this.target = target;
-	}
-
-	public setTileLayers(layers: Phaser.Tilemaps.TilemapLayer[]): void {
-		this.tileLayers = layers;
 	}
 
 	public handlePlayerCollision(player: Phaser.Physics.Arcade.Sprite): void {
@@ -351,11 +286,22 @@ export class Enemy {
 		this.scene.events.emit("enemyDeath", this.id);
 	}
 
+	public setTileLayers(
+		layers: Phaser.Tilemaps.TilemapLayer[] | undefined
+	): void {
+		this.detectionManager.tileLayers = layers;
+	}
+
+	public setTarget(target: Phaser.Physics.Arcade.Sprite): void {
+		this._target = target;
+		this.detectionManager.target = target;
+	}
+
 	public update(): void {
-		this.checkDetection();
+		this.detectionManager.checkDetection();
 		this.updateHealthBar();
 
-		if (this.hasDetectedPlayer && this.isMoving) {
+		if (this.detectionManager.hasDetectedPlayer && this.isMoving) {
 			this.moveTowardsTarget();
 		} else if (this.isMoving) {
 			this.moveRandomly();
@@ -376,8 +322,8 @@ export class Enemy {
 			this.healthBar.destroy();
 		}
 
-		this.target = undefined;
-		this.lastTargetPosition = undefined;
-		this.tileLayers = undefined;
+		this._target = undefined;
+		this.detectionManager.lastTargetPosition = undefined;
+		this.setTileLayers(undefined);
 	}
 }
