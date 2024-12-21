@@ -21,6 +21,8 @@ export class OtherPlayer extends BasePlayer {
 			x,
 			y
 		);
+		// this.adjustAngle(angle);
+
 		const direction = this.getDirectionFromAngle(angle);
 
 		if (direction) {
@@ -46,20 +48,21 @@ export class OtherPlayer extends BasePlayer {
 
 		this.stopAnimationTimer = this.scene.time.delayedCall(200, () => {
 			this.stopAnimation();
+			// this.adjustAngle(0);
 		});
 	}
 
 	private getDirectionFromAngle(
 		angle: number
 	): "UP" | "DOWN" | "LEFT" | "RIGHT" {
-		// Convert angle to degrees and normalize to 0-360
 		const degrees = Phaser.Math.RadToDeg(angle);
 		const normalized = (degrees + 360) % 360;
 
-		// Define angle ranges for each direction
-		if (normalized >= 45 && normalized < 135) return "DOWN";
-		if (normalized >= 135 && normalized < 225) return "LEFT";
-		if (normalized >= 225 && normalized < 315) return "UP";
+		// Slight margin on up and down directions due to normalize adjustments
+		if (normalized > 265 && normalized < 275) return "UP";
+		if (normalized > 85 && normalized < 95) return "DOWN";
+
+		if (normalized > 90 && normalized < 270) return "LEFT";
 		return "RIGHT";
 	}
 

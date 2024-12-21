@@ -138,7 +138,6 @@ export class MainPlayer extends BasePlayer {
 	): void {
 		const SPEED = 160;
 		const DIAGONAL_MODIFIER = 0.707; // 1/√2 to normalize diagonal movement
-		const DIAGONAL_ANGLE = 5;
 
 		let velocityX = 0;
 		let velocityY = 0;
@@ -147,10 +146,16 @@ export class MainPlayer extends BasePlayer {
 		if (leftPressed) {
 			velocityX = -SPEED;
 			this.playAnimation("left");
+			if (!downPressed && !upPressed) {
+				this.adjustAngle(0);
+			}
 			this.facingDirection = "LEFT";
 		} else if (rightPressed) {
 			velocityX = SPEED;
 			this.playAnimation("right");
+			if (!downPressed && !upPressed) {
+				this.adjustAngle(0);
+			}
 			this.facingDirection = "RIGHT";
 		}
 
@@ -161,9 +166,9 @@ export class MainPlayer extends BasePlayer {
 				this.playAnimation("up");
 				this.adjustAngle(0);
 			} else if (leftPressed) {
-				this.adjustAngle(DIAGONAL_ANGLE);
+				this.adjustAngle("UP_LEFT");
 			} else if (rightPressed) {
-				this.adjustAngle(-DIAGONAL_ANGLE);
+				this.adjustAngle("UP_RIGHT");
 			}
 			this.facingDirection = "UP";
 		} else if (downPressed) {
@@ -172,9 +177,9 @@ export class MainPlayer extends BasePlayer {
 				this.playAnimation("down");
 				this.adjustAngle(0);
 			} else if (leftPressed) {
-				this.adjustAngle(-DIAGONAL_ANGLE);
+				this.adjustAngle("DOWN_LEFT");
 			} else if (rightPressed) {
-				this.adjustAngle(DIAGONAL_ANGLE);
+				this.adjustAngle("DOWN_RIGHT");
 			}
 			this.facingDirection = "DOWN";
 		}
@@ -190,8 +195,8 @@ export class MainPlayer extends BasePlayer {
 
 		// Handle idle state
 		if (!upPressed && !downPressed && !leftPressed && !rightPressed) {
-			this.adjustAngle(0);
 			this.stopAnimation();
+			this.adjustAngle(0);
 		}
 	}
 

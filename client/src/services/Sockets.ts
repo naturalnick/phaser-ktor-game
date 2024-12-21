@@ -75,7 +75,6 @@ export class WebSocketService {
 					mapId,
 				};
 				this.socket.send(JSON.stringify(message));
-				console.log(currentTime, Date.now());
 				this.playerUpdateInterval = currentTime;
 			}
 		}
