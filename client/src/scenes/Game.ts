@@ -100,6 +100,7 @@ export class Game extends Scene {
 			this,
 			playerPos.x,
 			playerPos.y,
+			"player2",
 			this.uiManager,
 			this.mapManager
 		);

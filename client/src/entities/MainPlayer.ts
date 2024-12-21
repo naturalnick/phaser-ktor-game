@@ -39,11 +39,12 @@ export class MainPlayer extends BasePlayer {
 		scene: Scene,
 		x: number,
 		y: number,
+		spriteKey: string,
 		uiManager: UIManager,
 		mapManager: MapManager,
 		stats: PlayerStats = DEFAULT_PLAYER_STATS
 	) {
-		super(scene, x, y);
+		super(scene, x, y, spriteKey);
 		this.uiManager = uiManager;
 		this.mapManager = mapManager;
 		this.inventory = new InventoryManager(10);
@@ -137,6 +138,7 @@ export class MainPlayer extends BasePlayer {
 	): void {
 		const SPEED = 160;
 		const DIAGONAL_MODIFIER = 0.707; // 1/√2 to normalize diagonal movement
+		const DIAGONAL_ANGLE = 5;
 
 		let velocityX = 0;
 		let velocityY = 0;
@@ -144,11 +146,11 @@ export class MainPlayer extends BasePlayer {
 		// Calculate X velocity
 		if (leftPressed) {
 			velocityX = -SPEED;
-			this._sprite.anims.play("left", true);
+			this.playAnimation("left");
 			this.facingDirection = "LEFT";
 		} else if (rightPressed) {
 			velocityX = SPEED;
-			this._sprite.anims.play("right", true);
+			this.playAnimation("right");
 			this.facingDirection = "RIGHT";
 		}
 
@@ -156,13 +158,23 @@ export class MainPlayer extends BasePlayer {
 		if (upPressed) {
 			velocityY = -SPEED;
 			if (!leftPressed && !rightPressed) {
-				this._sprite.anims.play("up", true);
+				this.playAnimation("up");
+				this.adjustAngle(0);
+			} else if (leftPressed) {
+				this.adjustAngle(DIAGONAL_ANGLE);
+			} else if (rightPressed) {
+				this.adjustAngle(-DIAGONAL_ANGLE);
 			}
 			this.facingDirection = "UP";
 		} else if (downPressed) {
 			velocityY = SPEED;
 			if (!leftPressed && !rightPressed) {
-				this._sprite.anims.play("down", true);
+				this.playAnimation("down");
+				this.adjustAngle(0);
+			} else if (leftPressed) {
+				this.adjustAngle(-DIAGONAL_ANGLE);
+			} else if (rightPressed) {
+				this.adjustAngle(DIAGONAL_ANGLE);
 			}
 			this.facingDirection = "DOWN";
 		}
@@ -173,19 +185,13 @@ export class MainPlayer extends BasePlayer {
 			velocityY *= DIAGONAL_MODIFIER;
 		}
 
-		// Apply velocities
 		this._sprite.setVelocityX(velocityX);
 		this._sprite.setVelocityY(velocityY);
 
 		// Handle idle state
-		if (
-			!upPressed &&
-			!downPressed &&
-			!leftPressed &&
-			!rightPressed &&
-			!this.attackManager.isAttacking
-		) {
-			this._sprite.anims.pause();
+		if (!upPressed && !downPressed && !leftPressed && !rightPressed) {
+			this.adjustAngle(0);
+			this.stopAnimation();
 		}
 	}
 

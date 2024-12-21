@@ -13,6 +13,8 @@ export class WebSocketService {
 	private isEnemyHost: boolean = false;
 	private enemyUpdateInterval: number | null = null;
 	private playerManager: MultiplayerManager;
+	private playerUpdateInterval: number = 0;
+	private readonly PLAYER_UPDATE_INTERVAL: number = 100;
 
 	constructor(
 		scene: Scene,
@@ -58,15 +60,24 @@ export class WebSocketService {
 	}
 
 	public sendPosition(x: number, y: number, mapId: string): void {
-		if (this.socket.readyState === WebSocket.OPEN) {
-			const message: PlayerMove = {
-				type: "PlayerMove",
-				id: this.getPlayerId(),
-				x,
-				y,
-				mapId,
-			};
-			this.socket.send(JSON.stringify(message));
+		const currentTime = Date.now();
+
+		if (
+			currentTime - this.playerUpdateInterval >=
+			this.PLAYER_UPDATE_INTERVAL
+		) {
+			if (this.socket.readyState === WebSocket.OPEN) {
+				const message: PlayerMove = {
+					type: "PlayerMove",
+					id: this.getPlayerId(),
+					x,
+					y,
+					mapId,
+				};
+				this.socket.send(JSON.stringify(message));
+				console.log(currentTime, Date.now());
+				this.playerUpdateInterval = currentTime;
+			}
 		}
 	}
 
@@ -127,7 +138,7 @@ export class WebSocketService {
 
 	private handlePlayerJoin(playerId: string, x: number, y: number): void {
 		if (!this.playerManager.players.has(playerId)) {
-			const newPlayer = new OtherPlayer(this.scene, x, y);
+			const newPlayer = new OtherPlayer(this.scene, x, y, "player2", 15);
 			this.playerManager.players.set(playerId, newPlayer);
 
 			const enemyManager = this.scene.registry.get(
@@ -148,7 +159,6 @@ export class WebSocketService {
 		const player = this.playerManager.players.get(playerId);
 		if (player) {
 			player.moveTo(x, y);
-			console.log("Player moved to:", x, y);
 			const enemyManager = this.scene.registry.get(
 				"enemyManager"
 			) as EnemyManager;
