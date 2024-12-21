@@ -48,9 +48,7 @@ export class WebSocketService {
 					this.handleEnemyHost(message.hostId);
 					break;
 				case "EnemyUpdate":
-					this.handleEnemyUpdate(
-						JSON.stringify(message.data.enemies)
-					);
+					this.handleEnemyUpdate(message.data);
 					break;
 				case "PlayerLeave":
 					this.handlePlayerLeave(message.id);
@@ -100,7 +98,7 @@ export class WebSocketService {
 			y,
 			mapId,
 		};
-
+		console.log("PlayerId: ", joinMessage.id);
 		if (this.socket.readyState === WebSocket.OPEN) {
 			this.socket.send(JSON.stringify(joinMessage));
 		} else {
@@ -205,7 +203,14 @@ export class WebSocketService {
 		}
 	}
 
-	private handleEnemyUpdate(enemyData: string): void {
+	private handleEnemyUpdate(enemieData: {
+		mapId: string;
+		enemies: {
+			id: number;
+			x: number;
+			y: number;
+		}[];
+	}): void {
 		if (this.isEnemyHost) return;
 
 		const enemyManager = this.scene.registry.get(
@@ -214,8 +219,7 @@ export class WebSocketService {
 		if (!enemyManager) return;
 
 		try {
-			const enemies = JSON.parse(enemyData);
-			enemyManager.updateEnemyPositions(enemies);
+			enemyManager.updateEnemyPositions(enemieData);
 		} catch (e) {
 			console.error("Error parsing enemy data:", e);
 		}

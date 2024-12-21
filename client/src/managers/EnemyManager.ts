@@ -109,6 +109,7 @@ export class EnemyManager {
 
 		enemyData.enemies.forEach((enemyUpdate) => {
 			const enemy = this.enemies.find((e) => e.id === enemyUpdate.id);
+			console.log(enemyUpdate.x, enemyUpdate.y);
 			if (enemy) {
 				// Use Phaser's built-in interpolation for smooth movement
 				this.scene.tweens.add({
