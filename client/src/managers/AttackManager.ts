@@ -70,7 +70,7 @@ export class AttackManager {
 	}
 
 	private playAttackAnimation(): void {
-		const sprite = this.player.getSprite();
+		const sprite = this.player.sprite;
 		const facingDirection = this.player.getFacingDirection();
 
 		// temp animations
@@ -91,7 +91,7 @@ export class AttackManager {
 	}
 
 	private checkAttackCollision(): void {
-		const sprite = this.player.getSprite();
+		const sprite = this.player.sprite;
 		const facingDirection = this.player.getFacingDirection();
 
 		let attackX = sprite.x;

@@ -126,7 +126,7 @@ export class MainPlayer extends BasePlayer {
 	}
 
 	private setPosition(x: number, y: number): void {
-		this.sprite.setPosition(x, y);
+		this._sprite.setPosition(x, y);
 	}
 
 	private updateVelocity(
@@ -144,11 +144,11 @@ export class MainPlayer extends BasePlayer {
 		// Calculate X velocity
 		if (leftPressed) {
 			velocityX = -SPEED;
-			this.sprite.anims.play("left", true);
+			this._sprite.anims.play("left", true);
 			this.facingDirection = "LEFT";
 		} else if (rightPressed) {
 			velocityX = SPEED;
-			this.sprite.anims.play("right", true);
+			this._sprite.anims.play("right", true);
 			this.facingDirection = "RIGHT";
 		}
 
@@ -156,13 +156,13 @@ export class MainPlayer extends BasePlayer {
 		if (upPressed) {
 			velocityY = -SPEED;
 			if (!leftPressed && !rightPressed) {
-				this.sprite.anims.play("up", true);
+				this._sprite.anims.play("up", true);
 			}
 			this.facingDirection = "UP";
 		} else if (downPressed) {
 			velocityY = SPEED;
 			if (!leftPressed && !rightPressed) {
-				this.sprite.anims.play("down", true);
+				this._sprite.anims.play("down", true);
 			}
 			this.facingDirection = "DOWN";
 		}
@@ -174,8 +174,8 @@ export class MainPlayer extends BasePlayer {
 		}
 
 		// Apply velocities
-		this.sprite.setVelocityX(velocityX);
-		this.sprite.setVelocityY(velocityY);
+		this._sprite.setVelocityX(velocityX);
+		this._sprite.setVelocityY(velocityY);
 
 		// Handle idle state
 		if (
@@ -185,12 +185,12 @@ export class MainPlayer extends BasePlayer {
 			!rightPressed &&
 			!this.attackManager.isAttacking
 		) {
-			this.sprite.anims.pause();
+			this._sprite.anims.pause();
 		}
 	}
 
 	public getVelocity(): Phaser.Math.Vector2 {
-		return this.sprite.body?.velocity ?? new Phaser.Math.Vector2();
+		return this._sprite.body?.velocity ?? new Phaser.Math.Vector2();
 	}
 
 	private updateUI(): void {
@@ -227,8 +227,8 @@ export class MainPlayer extends BasePlayer {
 
 	private tryPickupItem(): void {
 		const nearbyItems = this.scene.physics.overlapCirc(
-			this.sprite.x,
-			this.sprite.y,
+			this._sprite.x,
+			this._sprite.y,
 			16
 		);
 
@@ -255,8 +255,8 @@ export class MainPlayer extends BasePlayer {
 		);
 
 		if (droppedItemKey) {
-			const dropX = this.sprite.x - this.sprite.width / 2;
-			const dropY = this.sprite.y - this.sprite.height / 2;
+			const dropX = this._sprite.x - this._sprite.width / 2;
+			const dropY = this._sprite.y - this._sprite.height / 2;
 
 			this.worldItemManager.dropItem(dropX, dropY, droppedItemKey);
 
@@ -342,22 +342,22 @@ export class MainPlayer extends BasePlayer {
 		// Semi-transparent blue circle
 		this.rangeIndicator.lineStyle(2, 0x4444ff, 0.3);
 		this.rangeIndicator.strokeCircle(
-			this.sprite.x,
-			this.sprite.y,
+			this._sprite.x,
+			this._sprite.y,
 			this.attackManager.range
 		);
 
 		// Very faint fill
 		this.rangeIndicator.fillStyle(0x4444ff, 0.1);
 		this.rangeIndicator.fillCircle(
-			this.sprite.x,
-			this.sprite.y,
+			this._sprite.x,
+			this._sprite.y,
 			this.attackManager.range
 		);
 	}
 
 	public update(): void {
-		if (!this.cursors || !this.sprite.body) return;
+		if (!this.cursors || !this._sprite.body) return;
 
 		const downPressed = this.cursors.down.isDown || this.sKey.isDown;
 		const upPressed = this.cursors.up.isDown || this.wKey.isDown;

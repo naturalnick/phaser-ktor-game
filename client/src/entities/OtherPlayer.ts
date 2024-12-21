@@ -8,7 +8,7 @@ export class OtherPlayer extends BasePlayer {
 
 	public moveTo(x: number, y: number): void {
 		this.scene.tweens.add({
-			targets: this.sprite,
+			targets: this._sprite,
 			x: x,
 			y: y,
 			duration: 100,

@@ -2,19 +2,23 @@ import { Scene } from "phaser";
 
 export abstract class BasePlayer {
 	protected scene: Scene;
-	protected sprite: Phaser.Physics.Arcade.Sprite;
+	protected _sprite: Phaser.Physics.Arcade.Sprite;
+
+	get sprite(): Phaser.Physics.Arcade.Sprite {
+		return this._sprite;
+	}
 
 	constructor(scene: Scene, x: number, y: number) {
 		this.scene = scene;
-		this.sprite = scene.physics.add.sprite(x, y, "player2");
+		this._sprite = scene.physics.add.sprite(x, y, "player2");
 
-		const collisionRadius = this.sprite.width / 2.5;
-		const offsetX = (this.sprite.width - collisionRadius * 2) / 2;
-		const offsetY = this.sprite.height - collisionRadius * 2;
-		this.sprite.body?.setCircle(collisionRadius, offsetX, offsetY);
+		const collisionRadius = this._sprite.width / 2.5;
+		const offsetX = (this._sprite.width - collisionRadius * 2) / 2;
+		const offsetY = this._sprite.height - collisionRadius * 2;
+		this._sprite.body?.setCircle(collisionRadius, offsetX, offsetY);
 
-		this.sprite.setDepth(3.1);
-		this.sprite.setCollideWorldBounds(true);
+		this._sprite.setDepth(3.1);
+		this._sprite.setCollideWorldBounds(true);
 		this.createAnimations();
 	}
 
@@ -65,13 +69,9 @@ export abstract class BasePlayer {
 		}
 	}
 
-	public getSprite(): Phaser.Physics.Arcade.Sprite {
-		return this.sprite;
-	}
-
 	public abstract update(): void;
 
 	public destroy(): void {
-		this.sprite.destroy();
+		this._sprite.destroy();
 	}
 }

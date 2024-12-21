@@ -22,8 +22,8 @@ export class SaveManager {
 					max: player.getHealthManager().getMaxHealth(),
 				},
 				position: {
-					x: player.getSprite().x,
-					y: player.getSprite().y,
+					x: player.sprite.x,
+					y: player.sprite.y,
 					map: player.getCurrentMap() || "map1",
 				},
 				inventory: {

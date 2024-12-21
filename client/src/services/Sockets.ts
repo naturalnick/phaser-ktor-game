@@ -30,37 +30,99 @@ export class WebSocketService {
 
 	private setupSocketListeners(): void {
 		this.socket.onmessage = (event) => {
-			const [action, playerId, ...params] = event.data.split("|");
+			const message = JSON.parse(event.data) as GameMessage;
 
-			switch (action) {
-				case "join":
-					this.handlePlayerJoin(
-						playerId,
-						parseFloat(params[0]),
-						parseFloat(params[1])
+			switch (message.type) {
+				case "PlayerJoin":
+					this.handlePlayerJoin(message.id, message.x, message.y);
+					break;
+				case "ChatMessage":
+					this.handleChatMessage(message.id, message.message);
+					break;
+				case "PlayerMove":
+					this.handlePlayerMove(message.id, message.x, message.y);
+					break;
+				case "EnemyHost":
+					this.handleEnemyHost(message.hostId);
+					break;
+				case "EnemyUpdate":
+					this.handleEnemyUpdate(
+						JSON.stringify(message.data.enemies)
 					);
 					break;
-				case "chat":
-					this.handleChatMessage(playerId, params[0]);
-					break;
-				case "move":
-					this.handlePlayerMove(
-						playerId,
-						parseFloat(params[0]),
-						parseFloat(params[1])
-					);
-					break;
-				case "enemyHost":
-					this.handleEnemyHostAssignment(playerId);
-					break;
-				case "enemyUpdate":
-					this.handleEnemyUpdate(playerId);
-					break;
-				case "leave":
-					this.handlePlayerLeave(playerId);
+				case "PlayerLeave":
+					this.handlePlayerLeave(message.id);
 					break;
 			}
 		};
+	}
+
+	public sendPosition(x: number, y: number, mapId: string): void {
+		if (this.socket.readyState === WebSocket.OPEN) {
+			const message: PlayerMove = {
+				type: "PlayerMove",
+				id: this.getPlayerId(),
+				x,
+				y,
+				mapId,
+			};
+			this.socket.send(JSON.stringify(message));
+		}
+	}
+
+	public sendMessage(message: string, mapId: string): void {
+		if (this.socket.readyState === WebSocket.OPEN) {
+			const chatMessage: ChatMessage = {
+				type: "ChatMessage",
+				id: this.getPlayerId(),
+				message,
+				mapId,
+			};
+			this.socket.send(JSON.stringify(chatMessage));
+		}
+	}
+
+	public initializeConnection(x: number, y: number, mapId: string): void {
+		const joinMessage: PlayerJoin = {
+			type: "PlayerJoin",
+			id: this.getPlayerId(),
+			x,
+			y,
+			mapId,
+		};
+
+		if (this.socket.readyState === WebSocket.OPEN) {
+			this.socket.send(JSON.stringify(joinMessage));
+		} else {
+			this.socket.onopen = () => {
+				this.socket.send(JSON.stringify(joinMessage));
+			};
+		}
+	}
+
+	private startEnemyBroadcast(enemyManager: EnemyManager): void {
+		this.enemyUpdateInterval = window.setInterval(() => {
+			if (this.socket.readyState === WebSocket.OPEN) {
+				const enemyData = enemyManager.getEnemySaveData();
+				const currentMapId = this.scene.registry.get("currentMapId");
+
+				const message: EnemyUpdate = {
+					type: "EnemyUpdate",
+					id: this.getPlayerId(),
+					data: {
+						mapId: currentMapId,
+						enemies: enemyData,
+					},
+				};
+
+				this.socket.send(JSON.stringify(message));
+			}
+		}, 100);
+	}
+
+	// Helper method to get the player ID
+	private getPlayerId(): string {
+		return this.socket.url.split("id=")[1];
 	}
 
 	private handlePlayerJoin(playerId: string, x: number, y: number): void {
@@ -86,7 +148,7 @@ export class WebSocketService {
 		const player = this.playerManager.players.get(playerId);
 		if (player) {
 			player.moveTo(x, y);
-
+			console.log("Player moved to:", x, y);
 			const enemyManager = this.scene.registry.get(
 				"enemyManager"
 			) as EnemyManager;
@@ -117,38 +179,7 @@ export class WebSocketService {
 		this.messageHandlers.push(handler);
 	}
 
-	public offChatMessage(
-		handler: (playerId: string, message: string) => void
-	): void {
-		const index = this.messageHandlers.indexOf(handler);
-		if (index > -1) {
-			this.messageHandlers.splice(index, 1);
-		}
-	}
-
-	public sendPosition(x: number, y: number, mapId: string): void {
-		if (this.socket.readyState === WebSocket.OPEN) {
-			this.socket.send(`move|${x}|${y}|${mapId}`);
-		}
-	}
-
-	public sendMessage(message: string, mapId: string): void {
-		if (this.socket.readyState === WebSocket.OPEN) {
-			this.socket.send(`chat|${message}|${mapId}`);
-		}
-	}
-
-	public initializeConnection(x: number, y: number, mapId: string): void {
-		if (this.socket.readyState === WebSocket.OPEN) {
-			this.socket.send(`join|${x}|${y}|${mapId}`);
-		} else {
-			this.socket.onopen = () => {
-				this.socket.send(`join|${x}|${y}|${mapId}`);
-			};
-		}
-	}
-
-	private handleEnemyHostAssignment(hostId: string): void {
+	private handleEnemyHost(hostId: string): void {
 		const enemyManager = this.scene.registry.get(
 			"enemyManager"
 		) as EnemyManager;
@@ -181,22 +212,6 @@ export class WebSocketService {
 		}
 	}
 
-	private startEnemyBroadcast(enemyManager: EnemyManager): void {
-		// Broadcast enemy positions every 100ms
-		this.enemyUpdateInterval = window.setInterval(() => {
-			if (this.socket.readyState === WebSocket.OPEN) {
-				const enemyData = enemyManager.getEnemySaveData();
-				const currentMapId = this.scene.registry.get("currentMapId");
-				this.socket.send(
-					`enemyUpdate|${JSON.stringify({
-						mapId: currentMapId,
-						enemies: enemyData,
-					})}`
-				);
-			}
-		}, 100);
-	}
-
 	private stopEnemyBroadcast(): void {
 		if (this.enemyUpdateInterval !== null) {
 			clearInterval(this.enemyUpdateInterval);
@@ -204,11 +219,14 @@ export class WebSocketService {
 		}
 	}
 
+	public closeConnection(): void {
+		this.socket.close();
+	}
+
 	public destroy(): void {
 		this.stopEnemyBroadcast();
 		this.socket.close();
-		this.playerManager.players.forEach((player) => player.destroy());
-		this.playerManager.players.clear();
+		this.playerManager.destroy();
 		this.messageHandlers = [];
 	}
 }

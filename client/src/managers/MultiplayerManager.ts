@@ -12,4 +12,9 @@ export class MultiplayerManager {
 	constructor(scene: Scene) {
 		this.scene = scene;
 	}
+
+	public destroy(): void {
+		this.players.forEach((player) => player.destroy());
+		this.players.clear();
+	}
 }

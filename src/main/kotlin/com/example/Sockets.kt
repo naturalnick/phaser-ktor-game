@@ -1,16 +1,12 @@
 package com.example
 
-import io.ktor.serialization.kotlinx.json.*
 import io.ktor.server.application.*
-import io.ktor.server.http.content.*
-import io.ktor.server.plugins.contentnegotiation.*
-import io.ktor.server.response.*
 import io.ktor.server.routing.*
 import io.ktor.server.websocket.*
 import io.ktor.websocket.*
+import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
-import java.time.Duration
 import java.util.UUID
 import java.util.concurrent.ConcurrentHashMap
 import kotlin.time.Duration.Companion.seconds
@@ -31,37 +27,51 @@ fun Application.configureSockets() {
             try {
                 for (frame in incoming) {
                     if (frame is Frame.Text) {
-                        val text = frame.readText()
-                        val parts = text.split("|")
-                        println(parts)
-                        when (parts[0]) {
-                            "move" -> {
-                                val x = parts[1].toDouble()
-                                val y = parts[2].toDouble()
-                                val mapId = parts[3]
-                                connectionManager.updatePosition(playerId, x, y, mapId)
+                        val message = Json.decodeFromString<GameMessage>(frame.readText())
+                        println(message.toString())
+                        when (message) {
+                            is GameMessage.PlayerMove -> {
+                                connectionManager.updatePosition(
+                                    message.id,
+                                    message.x,
+                                    message.y,
+                                    message.mapId
+                                )
                             }
-                            "join" -> {
-                                val x = parts[1].toDouble()
-                                val y = parts[2].toDouble()
-                                val mapId = parts[3]
-                                connectionManager.addConnection(this, playerId, x, y, mapId)
+                            is GameMessage.PlayerJoin -> {
+                                connectionManager.addConnection(
+                                    this,
+                                    message.id,
+                                    message.x,
+                                    message.y,
+                                    message.mapId
+                                )
                             }
-                            "chat" -> {
-                                val message = parts[1]
-                                val mapId = parts[2]
-                                connectionManager.handleChatMessage(playerId, message, mapId)
+                            is GameMessage.ChatMessage -> {
+                                connectionManager.handleChatMessage(
+                                    message.id,
+                                    message.message,
+                                    message.mapId
+                                )
                             }
-                            "enemyUpdate" -> {
-                                val enemyData = parts[1]
-                                val mapData = Json.decodeFromString<EnemyUpdateData>(enemyData)
-                                connectionManager.handleEnemyUpdate(playerId, enemyData, mapData.mapId)
+                            is GameMessage.EnemyUpdate -> {
+                                connectionManager.handleEnemyUpdate(
+                                    message.id,
+                                    message.data,
+                                    message.data.mapId
+                                )
+                            }
+                            is GameMessage.PlayerLeave -> {
+                                connectionManager.removeConnection(message.id)
+                            }
+                            is GameMessage.EnemyHost -> {
+                                // This is typically sent from server to client
                             }
                         }
                     }
                 }
             } catch (e: Exception) {
-                println("Error: ${e.message}")  // Add logging to see what's failing
+                println("Error processing message: ${e.message}, $e")
             } finally {
                 connectionManager.removeConnection(playerId)
             }
@@ -71,13 +81,53 @@ fun Application.configureSockets() {
 
 private fun generatePlayerId(): String = UUID.randomUUID().toString()
 
+@Serializable
 sealed class GameMessage {
+    @SerialName("PlayerMove")
     @Serializable
-    data class PlayerMove(val id: String, val x: Double, val y: Double) : GameMessage()
+    data class PlayerMove(
+        val id: String,
+        val x: Double,
+        val y: Double,
+        val mapId: String
+    ) : GameMessage()
+
+    @SerialName("PlayerJoin")
     @Serializable
-    data class PlayerJoin(val id: String, val x: Double, val y: Double) : GameMessage()
+    data class PlayerJoin(
+        val id: String,
+        val x: Double,
+        val y: Double,
+        val mapId: String
+    ) : GameMessage()
+
+    @SerialName("PlayerLeave")
     @Serializable
-    data class PlayerLeave(val id: String) : GameMessage()
+    data class PlayerLeave(
+        val id: String
+    ) : GameMessage()
+
+    @SerialName("ChatMessage")
+    @Serializable
+    data class ChatMessage(
+        val id: String,
+        val message: String,
+        val mapId: String
+    ) : GameMessage()
+
+    @SerialName("EnemyUpdate")
+    @Serializable
+    data class EnemyUpdate(
+        val id: String,
+        val data: EnemyUpdateData
+    ) : GameMessage()
+
+    @SerialName("EnemyHost")
+    @Serializable
+    data class EnemyHost(
+        val hostId: String,
+        val mapId: String
+    ) : GameMessage()
 }
 
 @Serializable
@@ -110,14 +160,17 @@ class ConnectionManager {
         connections[id] = session
         val initialPosition = PlayerPosition(id, x, y, mapId)
         playerPositions[id] = initialPosition
-
-        // If this is the first player in the map, make them the host
         if (!mapHosts.containsKey(mapId)) {
             mapHosts[mapId] = id
-            connections[id]?.send(Frame.Text("enemyHost|$id"))
+            connections[id]?.send(Frame.Text(Json.encodeToString(GameMessage.serializer(),
+                GameMessage.EnemyHost(id, mapId)
+            )))
         }
-
-        broadcastToMap(mapId, "join|$id|$x|$y", id)
+        broadcastToMap(
+            mapId,
+            GameMessage.PlayerJoin(id, x, y, mapId),
+            id
+        )
     }
 
     suspend fun removeConnection(id: String) {
@@ -125,22 +178,27 @@ class ConnectionManager {
             if (mapHosts[position.mapId] == id) {
                 reassignHost(position.mapId, id)
             }
-            broadcastToMap(position.mapId, "leave|$id", id)
+            broadcastToMap(
+                position.mapId,
+                GameMessage.PlayerLeave(id),
+                id
+            )
         }
         connections.remove(id)
         playerPositions.remove(id)
     }
 
     private suspend fun reassignHost(mapId: String, oldHostId: String) {
-        // Find another player in the same map
         val newHost = playerPositions.entries
             .firstOrNull { it.value.mapId == mapId && it.key != oldHostId }
             ?.key
 
         if (newHost != null) {
             mapHosts[mapId] = newHost
-            connections[newHost]?.send(Frame.Text("enemyHost|$newHost"))
-            broadcastToMap(mapId, "enemyHost|$newHost")
+            val hostMessage = GameMessage.EnemyHost(newHost, mapId)
+            val serializedMessage = Json.encodeToString(GameMessage.serializer(), hostMessage)
+            connections[newHost]?.send(Frame.Text(serializedMessage))
+            broadcastToMap(mapId, hostMessage)
         } else {
             mapHosts.remove(mapId)
         }
@@ -154,19 +212,20 @@ class ConnectionManager {
 
             pos.x = x
             pos.y = y
-            broadcastToMap(pos.mapId, "move|$id|$x|$y", id)
+            broadcastToMap(
+                pos.mapId,
+                GameMessage.PlayerMove(id, x, y, mapId),
+                id
+            )
         }
     }
 
     suspend fun handleChatMessage(id: String, message: String, mapId: String) {
-        broadcastToMap(mapId, "chat|$id|$message", id)
-    }
-
-    suspend fun handleEnemyUpdate(id: String, enemyData: String, mapId: String) {
-        // Only relay enemy updates from the map host
-        if (mapHosts[mapId] == id) {
-            broadcastToMap(mapId, "enemyUpdate|$enemyData", id)
-        }
+        broadcastToMap(
+            mapId,
+            GameMessage.ChatMessage(id, message, mapId),
+            id
+        )
     }
 
     private suspend fun changeMap(id: String, x: Double, y: Double, newMapId: String) {
@@ -176,26 +235,45 @@ class ConnectionManager {
             if (mapHosts[oldMapId] == id) {
                 reassignHost(oldMapId, id)
             }
-            // Notify old map players
-            broadcastToMap(oldMapId, "leave|$id", id)
+            // Notify old map players of leave
+            broadcastToMap(
+                oldMapId,
+                GameMessage.PlayerLeave(id),
+                id
+            )
 
             // Update map and notify new map players
             pos.mapId = newMapId
             if (!mapHosts.containsKey(newMapId)) {
                 mapHosts[newMapId] = id
-                connections[id]?.send(Frame.Text("enemyHost|$id"))
+                val hostMessage = GameMessage.EnemyHost(id, newMapId)
+                connections[id]?.send(Frame.Text(Json.encodeToString(GameMessage.serializer(), hostMessage)))
             }
 
-            broadcastToMap(newMapId, "join|$id|${x}|${y}|${newMapId}", id)
+            broadcastToMap(
+                newMapId,
+                GameMessage.PlayerJoin(id, x, y, newMapId),
+                id
+            )
         }
     }
 
-    private suspend fun broadcastToMap(mapId: String, message: String, excludeId: String? = null) {
-        // Find all players in this map and send them the message
+    suspend fun handleEnemyUpdate(id: String, enemyData: EnemyUpdateData, mapId: String) {
+        if (mapHosts[mapId] == id) {
+            broadcastToMap(
+                mapId,
+                GameMessage.EnemyUpdate(id, enemyData),
+                id
+            )
+        }
+    }
+
+    private suspend fun broadcastToMap(mapId: String, message: GameMessage, excludeId: String? = null) {
+        val serializedMessage = Json.encodeToString(GameMessage.serializer(), message)
         playerPositions.values
             .filter { it.mapId == mapId && it.id != excludeId }
             .forEach { player ->
-                connections[player.id]?.send(Frame.Text(message))
+                connections[player.id]?.send(Frame.Text(serializedMessage))
             }
     }
 }

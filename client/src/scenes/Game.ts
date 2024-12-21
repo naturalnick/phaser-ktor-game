@@ -107,10 +107,10 @@ export class Game extends Scene {
 	}
 
 	private setupGame(saveData?: any): void {
-		this.mapManager.setupPlayerTransitions(this.player.getSprite());
+		this.mapManager.setupPlayerTransitions(this.player.sprite);
 
 		this.enemyManager.initialize({
-			player: this.player.getSprite(),
+			player: this.player.sprite,
 			collisionLayers: this.mapManager.getCollisionLayers(),
 			saveData: saveData?.maps.map1.enemies,
 		});
@@ -121,8 +121,8 @@ export class Game extends Scene {
 			this.playerManager
 		);
 		this.webSocketService.initializeConnection(
-			this.player.getSprite().x,
-			this.player.getSprite().y,
+			this.player.sprite.x,
+			this.player.sprite.y,
 			"map1"
 		);
 
@@ -132,7 +132,7 @@ export class Game extends Scene {
 			fadeColor: 0x000000,
 			duration: 500,
 		});
-		exitTrigger.addOverlapWith(this.player.getSprite(), () =>
+		exitTrigger.addOverlapWith(this.player.sprite, () =>
 			console.log("here")
 		);
 
@@ -143,7 +143,7 @@ export class Game extends Scene {
 
 		const collisionLayers = this.mapManager.getCollisionLayers();
 		collisionLayers.forEach((layer) => {
-			this.physics.add.collider(this.player.getSprite(), layer);
+			this.physics.add.collider(this.player.sprite, layer);
 		});
 	}
 
@@ -169,7 +169,7 @@ export class Game extends Scene {
 		};
 
 		this.cameraController = new CameraController(this, cameraConfig);
-		this.cameraController.startFollow(this.player.getSprite());
+		this.cameraController.startFollow(this.player.sprite);
 
 		this.scale.on("resize", () => {
 			this.cameraController.setupCamera(cameraConfig);
@@ -181,6 +181,7 @@ export class Game extends Scene {
 
 		window.addEventListener("beforeunload", () => {
 			SaveManager.saveGame(this);
+			console.log("Window closed");
 		});
 	}
 
@@ -193,7 +194,7 @@ export class Game extends Scene {
 			(this.player.getVelocity().x !== 0 ||
 				this.player.getVelocity().y !== 0)
 		) {
-			const sprite = this.player.getSprite();
+			const sprite = this.player.sprite;
 			this.webSocketService.sendPosition(
 				sprite.x,
 				sprite.y,
