@@ -39,13 +39,19 @@ interface EnemyUpdate {
 	};
 }
 
-interface EnemyData {
+interface EnemyDamage {
+	type: "EnemyDamage";
+	playerId: string;
 	mapId: string;
-	enemy: {
-		id: number;
-		x: number;
-		y: number;
-	};
+	enemyId: number;
+	damage: number;
+}
+
+interface EnemyDeath {
+	type: "EnemyDeath";
+	playerId: string;
+	mapId: string;
+	enemyId: number;
 }
 
 interface EnemyHost {
@@ -60,4 +66,6 @@ type GameMessage =
 	| PlayerLeave
 	| ChatMessage
 	| EnemyUpdate
+	| EnemyDamage
+	| EnemyDeath
 	| EnemyHost;

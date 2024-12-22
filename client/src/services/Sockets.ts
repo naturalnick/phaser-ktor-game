@@ -33,26 +33,32 @@ export class WebSocketService {
 
 	private setupSocketListeners(): void {
 		this.socket.onmessage = (event) => {
-			const message = JSON.parse(event.data) as GameMessage;
+			const data = JSON.parse(event.data) as GameMessage;
 
-			switch (message.type) {
+			switch (data.type) {
 				case "PlayerJoin":
-					this.handlePlayerJoin(message.id, message.x, message.y);
+					this.handlePlayerJoin(data.id, data.x, data.y);
 					break;
 				case "ChatMessage":
-					this.handleChatMessage(message.id, message.message);
+					this.handleChatMessage(data.id, data.message);
 					break;
 				case "PlayerMove":
-					this.handlePlayerMove(message.id, message.x, message.y);
+					this.handlePlayerMove(data.id, data.x, data.y);
 					break;
 				case "EnemyHost":
-					this.handleEnemyHost(message.hostId);
+					this.handleEnemyHost(data.hostId);
 					break;
 				case "EnemyUpdate":
-					this.handleEnemyUpdate(message.data);
+					this.handleEnemyUpdate(data.data);
+					break;
+				case "EnemyDamage":
+					this.handleEnemyDamage(data.enemyId, data.damage);
+					break;
+				case "EnemyDeath":
+					this.handleEnemyDeath(data.enemyId);
 					break;
 				case "PlayerLeave":
-					this.handlePlayerLeave(message.id);
+					this.handlePlayerLeave(data.id);
 					break;
 			}
 		};
@@ -122,6 +128,31 @@ export class WebSocketService {
 						y,
 					},
 				},
+			};
+			this.socket.send(JSON.stringify(message));
+		}
+	}
+
+	public sendEnemyDamage(enemyId: number, damage: number): void {
+		if (this.socket.readyState === WebSocket.OPEN) {
+			const message: EnemyDamage = {
+				type: "EnemyDamage",
+				playerId: this.getPlayerId(),
+				mapId: this.scene.registry.get("currentMapId"),
+				enemyId,
+				damage,
+			};
+			this.socket.send(JSON.stringify(message));
+		}
+	}
+
+	public sendEnemyDeath(enemyId: number): void {
+		if (this.socket.readyState === WebSocket.OPEN) {
+			const message: EnemyDeath = {
+				type: "EnemyDeath",
+				playerId: this.getPlayerId(),
+				mapId: this.scene.registry.get("currentMapId"),
+				enemyId,
 			};
 			this.socket.send(JSON.stringify(message));
 		}
@@ -220,11 +251,25 @@ export class WebSocketService {
 		) as EnemyManager;
 		if (!enemyManager) return;
 
-		try {
-			enemyManager.updateEnemyPosition(enemieData);
-		} catch (e) {
-			console.error("Error parsing enemy data:", e);
-		}
+		enemyManager.updateEnemyPosition(enemieData);
+	}
+
+	private handleEnemyDamage(enemyId: number, damage: number): void {
+		const enemyManager = this.scene.registry.get(
+			"enemyManager"
+		) as EnemyManager;
+		if (!enemyManager) return;
+
+		enemyManager.damageEnemy(enemyId, damage);
+	}
+
+	private handleEnemyDeath(enemyId: number): void {
+		const enemyManager = this.scene.registry.get(
+			"enemyManager"
+		) as EnemyManager;
+		if (!enemyManager) return;
+
+		enemyManager.removeEnemy(enemyId);
 	}
 
 	public closeConnection(): void {

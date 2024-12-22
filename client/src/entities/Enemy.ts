@@ -107,7 +107,7 @@ export class Enemy {
 		this.healthBar.setDepth(this.currentSpriteDepth + 0.1);
 	}
 
-	private updateHealthBar(): void {
+	private updateHealthBar(x?: number, y?: number): void {
 		if (!this.healthBar || !this.showHealthBar) return;
 
 		this.healthBar.clear();
@@ -117,9 +117,9 @@ export class Enemy {
 			this.healthManager.getMaxHealth();
 
 		// Calculate position (centered above the sprite)
-		const barX = this.sprite.x - this.healthBarWidth / 2;
+		const barX = (x ?? this.sprite.x) - this.healthBarWidth / 2;
 		const barY =
-			this.sprite.y -
+			(y ?? this.sprite.y) -
 			this.sprite.displayHeight / 2 -
 			this.healthBarHeight -
 			5;
@@ -185,6 +185,23 @@ export class Enemy {
 		});
 
 		this.startMoving();
+	}
+
+	// this is network position update - not part of the enemy movement cycle
+	// it may be better to start the movement loop instead of this
+	// create a new function for setting the position and start the update function
+	public moveToPosition(x: number, y: number): void {
+		this.scene.tweens.add({
+			targets: this._sprite,
+			x: x,
+			y: y,
+			duration: 200,
+			ease: "Power2",
+			onActive: () => {
+				this.updateHealthBar(x, y);
+				this.setSpriteDepth();
+			},
+		});
 	}
 
 	private moveTowardsTarget(): void {
@@ -291,8 +308,8 @@ export class Enemy {
 			},
 		});
 
-		// Emit death event for any listeners
-		this.scene.events.emit("enemyDeath", this.id);
+		const sockets = this.scene.registry.get("sockets") as WebSocketService;
+		sockets.sendEnemyDeath(this.id);
 	}
 
 	public setTileLayers(
@@ -306,13 +323,11 @@ export class Enemy {
 	}
 
 	public update(): void {
-		this.detectionManager.checkDetection();
 		this.updateHealthBar();
-		if (
-			this.detectionManager.hasDetectedPlayer &&
-			this.isMoving &&
-			this._localControlEnabled
-		) {
+		this.setSpriteDepth();
+
+		this.detectionManager.checkDetection();
+		if (this.detectionManager.hasDetectedPlayer && this.isMoving) {
 			this.moveTowardsTarget();
 		} else if (this.isMoving && this._localControlEnabled) {
 			this.moveRandomly();
@@ -335,8 +350,6 @@ export class Enemy {
 				this.enemyUpdateTime = currentTime;
 			}
 		}
-
-		this.setSpriteDepth();
 	}
 
 	public destroy(): void {

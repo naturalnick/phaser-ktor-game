@@ -1,6 +1,7 @@
 import { Scene } from "phaser";
 import { Enemy } from "../entities/Enemy";
 import { MainPlayer } from "../entities/MainPlayer";
+import { WebSocketService } from "../services/Sockets";
 
 interface AttackConfig {
 	cooldown?: number;
@@ -58,7 +59,7 @@ export class AttackManager {
 		this._isAttacking = true;
 		this.lastAttackTime = currentTime;
 
-		this.playAttackAnimation();
+		// this.playAttackAnimation();
 
 		// Check for enemies in attack range
 		this.checkAttackCollision();
@@ -69,26 +70,26 @@ export class AttackManager {
 		});
 	}
 
-	private playAttackAnimation(): void {
-		const sprite = this.player.sprite;
-		const facingDirection = this.player.getFacingDirection();
+	// private playAttackAnimation(): void {
+	// 	const sprite = this.player.sprite;
+	// 	const facingDirection = this.player.getFacingDirection();
 
-		// temp animations
-		switch (facingDirection) {
-			case "UP":
-				sprite.anims.play("up", true);
-				break;
-			case "DOWN":
-				sprite.anims.play("down", true);
-				break;
-			case "LEFT":
-				sprite.anims.play("left", true);
-				break;
-			case "RIGHT":
-				sprite.anims.play("right", true);
-				break;
-		}
-	}
+	// 	// temp animations
+	// 	switch (facingDirection) {
+	// 		case "UP":
+	// 			sprite.anims.play("up", true);
+	// 			break;
+	// 		case "DOWN":
+	// 			sprite.anims.play("down", true);
+	// 			break;
+	// 		case "LEFT":
+	// 			sprite.anims.play("left", true);
+	// 			break;
+	// 		case "RIGHT":
+	// 			sprite.anims.play("right", true);
+	// 			break;
+	// 	}
+	// }
 
 	private checkAttackCollision(): void {
 		const sprite = this.player.sprite;
@@ -132,6 +133,12 @@ export class AttackManager {
 				) as Enemy;
 				if (enemyInstance) {
 					enemyInstance.takeDamage(this.damage);
+
+					const sockets = this.scene.registry.get(
+						"sockets"
+					) as WebSocketService;
+					sockets.sendEnemyDamage(enemyInstance.id, this.damage);
+
 					this.onHit(enemyInstance);
 				}
 			}

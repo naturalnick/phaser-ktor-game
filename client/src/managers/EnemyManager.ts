@@ -1,6 +1,5 @@
 import { Scene } from "phaser";
 import { Enemy } from "../entities/Enemy";
-import { WebSocketService } from "../services/Sockets";
 import { EnemySaveData } from "../types/SaveData";
 import { MapManager } from "./MapManager";
 
@@ -43,6 +42,22 @@ export class EnemyManager {
 		this.enemies.forEach((enemy) => {
 			enemy.removePlayer(playerId);
 		});
+	}
+
+	public removeEnemy(enemyId: number) {
+		const enemyIndex = this.enemies.findIndex((e) => e.id === enemyId);
+		if (enemyIndex !== -1) {
+			const enemy = this.enemies[enemyIndex];
+			enemy.destroy();
+			this.enemies.splice(enemyIndex, 1);
+		}
+	}
+
+	public damageEnemy(enemyId: number, damage: number) {
+		const enemy = this.enemies.find((e) => e.id === enemyId);
+		if (enemy) {
+			enemy.takeDamage(damage);
+		}
 	}
 
 	private createAndSetupEnemies(
@@ -105,35 +120,9 @@ export class EnemyManager {
 	}) {
 		const enemy = this.enemies.find((e) => e.id === enemyData.enemy.id);
 		if (enemy) {
-			enemy.sprite.x = enemyData.enemy.x;
-			enemy.sprite.y = enemyData.enemy.y;
+			enemy.moveToPosition(enemyData.enemy.x, enemyData.enemy.y);
 		}
 	}
-
-	// public updateEnemyPositions(enemyData: {
-	// 	mapId: string;
-	// 	enemies: EnemySaveData[];
-	// }): void {
-	// 	if (this.isControlledByHost) return;
-
-	// 	const currentMapId = this.mapManager.getCurrentMapId();
-	// 	if (enemyData.mapId !== currentMapId) return;
-
-	// 	enemyData.enemies.forEach((enemyUpdate) => {
-	// 		const enemy = this.enemies.find((e) => e.id === enemyUpdate.id);
-	// 		console.log(enemyUpdate.x, enemyUpdate.y);
-	// 		if (enemy) {
-	// 			// Use Phaser's built-in interpolation for smooth movement
-	// 			this.scene.tweens.add({
-	// 				targets: enemy.sprite,
-	// 				x: enemyUpdate.x,
-	// 				y: enemyUpdate.y,
-	// 				duration: 100, // Match the broadcast interval
-	// 				ease: "Linear",
-	// 			});
-	// 		}
-	// 	});
-	// }
 
 	public setHostControl(isHost: boolean): void {
 		this.isControlledByHost = isHost;

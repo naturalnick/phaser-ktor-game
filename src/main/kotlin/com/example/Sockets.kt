@@ -61,6 +61,21 @@ fun Application.configureSockets() {
                                     message.data.mapId
                                 )
                             }
+                            is GameMessage.EnemyDamage -> {
+                                connectionManager.handleEnemyDamage(
+                                    message.playerId,
+                                    message.mapId,
+                                    message.enemyId,
+                                    message.damage
+                                )
+                            }
+                            is GameMessage.EnemyDeath -> {
+                                connectionManager.handleEnemyDeath(
+                                    message.playerId,
+                                    message.mapId,
+                                    message.enemyId
+                                )
+                            }
                             is GameMessage.PlayerLeave -> {
                                 connectionManager.removeConnection(message.id)
                             }
@@ -120,6 +135,23 @@ sealed class GameMessage {
     data class EnemyUpdate(
         val id: String,
         val data: EnemyUpdateData
+    ) : GameMessage()
+
+    @SerialName("EnemyDamage")
+    @Serializable
+    data class EnemyDamage(
+        val playerId: String,
+        val mapId: String,
+        val enemyId: Int,
+        val damage: Int
+    ) : GameMessage()
+
+    @SerialName("EnemyDeath")
+    @Serializable
+    data class EnemyDeath(
+        val playerId: String,
+        val mapId: String,
+        val enemyId: Int
     ) : GameMessage()
 
     @SerialName("EnemyHost")
@@ -257,14 +289,24 @@ class ConnectionManager {
         }
     }
 
-    suspend fun handleEnemyUpdate(id: String, enemyData: EnemyUpdateData, mapId: String) {
-        if (mapHosts[mapId] == id) {
+    suspend fun handleEnemyUpdate(playerId: String, enemyData: EnemyUpdateData, mapId: String) {
+        if (mapHosts[mapId] == playerId) {
             broadcastToMap(
                 mapId,
-                GameMessage.EnemyUpdate(id, enemyData),
-                id
+                GameMessage.EnemyUpdate(playerId, enemyData),
+                playerId
             )
         }
+    }
+
+    suspend fun handleEnemyDamage(playerId: String, mapId: String, enemyId: Int, damage: Int) {
+        broadcastToMap(mapId, GameMessage.EnemyDamage(playerId, mapId, enemyId, damage), playerId)
+    }
+
+    suspend fun handleEnemyDeath(playerId: String, mapId: String, enemyId: Int) {
+        if (mapHosts[mapId] != playerId) return
+
+        broadcastToMap(mapId, GameMessage.EnemyDeath(playerId, mapId, enemyId))
     }
 
     private suspend fun broadcastToMap(mapId: String, message: GameMessage, excludeId: String? = null) {
