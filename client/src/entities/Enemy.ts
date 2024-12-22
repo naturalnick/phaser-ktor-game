@@ -1,6 +1,7 @@
 import { Scene } from "phaser";
 import { DetectionManager } from "../managers/DetectionManager";
 import { HealthManager } from "../managers/HealthManager";
+import { WebSocketService } from "../services/Sockets";
 import { EnemySaveData } from "../types/SaveData";
 
 interface EnemyConfig {
@@ -41,6 +42,8 @@ export class Enemy {
 	private healthBarHeight: number = 4;
 	private showHealthBar: boolean;
 	private _localControlEnabled: boolean = true;
+	private enemyUpdateTime: number = 0;
+	private readonly ENEMY_UPDATE_INTERVAL: number = 100;
 
 	set localControlEnabled(enabled: boolean) {
 		this._localControlEnabled = enabled;
@@ -314,6 +317,25 @@ export class Enemy {
 		} else if (this.isMoving && this._localControlEnabled) {
 			this.moveRandomly();
 		}
+
+		if (this.isMoving) {
+			const currentTime = Date.now();
+
+			if (
+				currentTime - this.enemyUpdateTime >=
+				this.ENEMY_UPDATE_INTERVAL
+			) {
+				this.enemyUpdateTime = currentTime;
+
+				const sockets = this.scene.registry.get(
+					"sockets"
+				) as WebSocketService;
+				sockets.sendEnemyUpdate(this.id, this.sprite.x, this.sprite.y);
+
+				this.enemyUpdateTime = currentTime;
+			}
+		}
+
 		this.setSpriteDepth();
 	}
 

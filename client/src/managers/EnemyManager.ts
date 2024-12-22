@@ -1,5 +1,6 @@
 import { Scene } from "phaser";
 import { Enemy } from "../entities/Enemy";
+import { WebSocketService } from "../services/Sockets";
 import { EnemySaveData } from "../types/SaveData";
 import { MapManager } from "./MapManager";
 
@@ -98,30 +99,41 @@ export class EnemyManager {
 		this.setupComplete = true;
 	}
 
-	public updateEnemyPositions(enemyData: {
+	public updateEnemyPosition(enemyData: {
 		mapId: string;
-		enemies: EnemySaveData[];
-	}): void {
-		if (this.isControlledByHost) return;
-
-		const currentMapId = this.mapManager.getCurrentMapId();
-		if (enemyData.mapId !== currentMapId) return;
-
-		enemyData.enemies.forEach((enemyUpdate) => {
-			const enemy = this.enemies.find((e) => e.id === enemyUpdate.id);
-			console.log(enemyUpdate.x, enemyUpdate.y);
-			if (enemy) {
-				// Use Phaser's built-in interpolation for smooth movement
-				this.scene.tweens.add({
-					targets: enemy.sprite,
-					x: enemyUpdate.x,
-					y: enemyUpdate.y,
-					duration: 100, // Match the broadcast interval
-					ease: "Linear",
-				});
-			}
-		});
+		enemy: EnemySaveData;
+	}) {
+		const enemy = this.enemies.find((e) => e.id === enemyData.enemy.id);
+		if (enemy) {
+			enemy.sprite.x = enemyData.enemy.x;
+			enemy.sprite.y = enemyData.enemy.y;
+		}
 	}
+
+	// public updateEnemyPositions(enemyData: {
+	// 	mapId: string;
+	// 	enemies: EnemySaveData[];
+	// }): void {
+	// 	if (this.isControlledByHost) return;
+
+	// 	const currentMapId = this.mapManager.getCurrentMapId();
+	// 	if (enemyData.mapId !== currentMapId) return;
+
+	// 	enemyData.enemies.forEach((enemyUpdate) => {
+	// 		const enemy = this.enemies.find((e) => e.id === enemyUpdate.id);
+	// 		console.log(enemyUpdate.x, enemyUpdate.y);
+	// 		if (enemy) {
+	// 			// Use Phaser's built-in interpolation for smooth movement
+	// 			this.scene.tweens.add({
+	// 				targets: enemy.sprite,
+	// 				x: enemyUpdate.x,
+	// 				y: enemyUpdate.y,
+	// 				duration: 100, // Match the broadcast interval
+	// 				ease: "Linear",
+	// 			});
+	// 		}
+	// 	});
+	// }
 
 	public setHostControl(isHost: boolean): void {
 		this.isControlledByHost = isHost;

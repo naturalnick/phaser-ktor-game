@@ -3,6 +3,7 @@ import { OtherPlayer } from "../entities/OtherPlayer";
 import { EnemyManager } from "../managers/EnemyManager";
 import { MultiplayerManager } from "../managers/MultiplayerManager";
 import { UIManager } from "../managers/UIManager";
+import { EnemySaveData } from "../types/SaveData";
 
 export class WebSocketService {
 	private socket: WebSocket;
@@ -13,7 +14,7 @@ export class WebSocketService {
 	private isEnemyHost: boolean = false;
 	private enemyUpdateInterval: number | null = null;
 	private playerManager: MultiplayerManager;
-	private playerUpdateInterval: number = 0;
+	private playerUpdateTime: number = 0;
 	private readonly PLAYER_UPDATE_INTERVAL: number = 100;
 
 	constructor(
@@ -61,7 +62,7 @@ export class WebSocketService {
 		const currentTime = Date.now();
 
 		if (
-			currentTime - this.playerUpdateInterval >=
+			currentTime - this.playerUpdateTime >=
 			this.PLAYER_UPDATE_INTERVAL
 		) {
 			if (this.socket.readyState === WebSocket.OPEN) {
@@ -73,7 +74,7 @@ export class WebSocketService {
 					mapId,
 				};
 				this.socket.send(JSON.stringify(message));
-				this.playerUpdateInterval = currentTime;
+				this.playerUpdateTime = currentTime;
 			}
 		}
 	}
@@ -108,24 +109,32 @@ export class WebSocketService {
 		}
 	}
 
-	private startEnemyBroadcast(enemyManager: EnemyManager): void {
-		this.enemyUpdateInterval = window.setInterval(() => {
-			if (this.socket.readyState === WebSocket.OPEN) {
-				const enemyData = enemyManager.getEnemySaveData();
-				const currentMapId = this.scene.registry.get("currentMapId");
-
-				const message: EnemyUpdate = {
-					type: "EnemyUpdate",
-					id: this.getPlayerId(),
-					data: {
-						mapId: currentMapId,
-						enemies: enemyData,
+	public sendEnemyUpdate(enemyId: number, x: number, y: number): void {
+		if (this.socket.readyState === WebSocket.OPEN) {
+			const message: EnemyUpdate = {
+				type: "EnemyUpdate",
+				id: this.getPlayerId(),
+				data: {
+					mapId: this.scene.registry.get("currentMapId"),
+					enemy: {
+						id: enemyId,
+						x,
+						y,
 					},
-				};
+				},
+			};
+			this.socket.send(JSON.stringify(message));
+		}
+	}
 
-				this.socket.send(JSON.stringify(message));
-			}
-		}, 100);
+	public sendLeaveGame(): void {
+		const leaveMessage: PlayerLeave = {
+			type: "PlayerLeave",
+			id: this.getPlayerId(),
+		};
+		if (this.socket.readyState === WebSocket.OPEN) {
+			this.socket.send(JSON.stringify(leaveMessage));
+		}
 	}
 
 	// Helper method to get the player ID
@@ -196,20 +205,13 @@ export class WebSocketService {
 		this.isEnemyHost = isHost;
 
 		if (isHost) {
-			this.startEnemyBroadcast(enemyManager);
 			enemyManager.setHostControl(isHost);
-		} else {
-			this.stopEnemyBroadcast();
 		}
 	}
 
 	private handleEnemyUpdate(enemieData: {
 		mapId: string;
-		enemies: {
-			id: number;
-			x: number;
-			y: number;
-		}[];
+		enemy: EnemySaveData;
 	}): void {
 		if (this.isEnemyHost) return;
 
@@ -219,16 +221,9 @@ export class WebSocketService {
 		if (!enemyManager) return;
 
 		try {
-			enemyManager.updateEnemyPositions(enemieData);
+			enemyManager.updateEnemyPosition(enemieData);
 		} catch (e) {
 			console.error("Error parsing enemy data:", e);
-		}
-	}
-
-	private stopEnemyBroadcast(): void {
-		if (this.enemyUpdateInterval !== null) {
-			clearInterval(this.enemyUpdateInterval);
-			this.enemyUpdateInterval = null;
 		}
 	}
 
@@ -237,7 +232,6 @@ export class WebSocketService {
 	}
 
 	public destroy(): void {
-		this.stopEnemyBroadcast();
 		this.socket.close();
 		this.playerManager.destroy();
 		this.messageHandlers = [];

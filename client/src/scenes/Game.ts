@@ -110,12 +110,6 @@ export class Game extends Scene {
 	private setupGame(saveData?: any): void {
 		this.mapManager.setupPlayerTransitions(this.player.sprite);
 
-		this.enemyManager.initialize({
-			player: this.player.sprite,
-			collisionLayers: this.mapManager.getCollisionLayers(),
-			saveData: saveData?.maps.map1.enemies,
-		});
-
 		this.webSocketService = new WebSocketService(
 			this,
 			this.uiManager,
@@ -126,6 +120,13 @@ export class Game extends Scene {
 			this.player.sprite.y,
 			"map1"
 		);
+		this.registry.set("sockets", this.webSocketService);
+
+		this.enemyManager.initialize({
+			player: this.player.sprite,
+			collisionLayers: this.mapManager.getCollisionLayers(),
+			saveData: saveData?.maps.map1.enemies,
+		});
 
 		const exitTrigger = new TransitionTrigger(this, 100, 300, 16, 16, {
 			targetMap: "map1",
@@ -182,7 +183,7 @@ export class Game extends Scene {
 
 		window.addEventListener("beforeunload", () => {
 			SaveManager.saveGame(this);
-			console.log("Window closed");
+			this.webSocketService.sendLeaveGame();
 		});
 	}
 

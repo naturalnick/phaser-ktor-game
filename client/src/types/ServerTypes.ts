@@ -31,11 +31,20 @@ interface EnemyUpdate {
 	id: string;
 	data: {
 		mapId: string;
-		enemies: Array<{
+		enemy: {
 			id: number;
 			x: number;
 			y: number;
-		}>;
+		};
+	};
+}
+
+interface EnemyData {
+	mapId: string;
+	enemy: {
+		id: number;
+		x: number;
+		y: number;
 	};
 }
 

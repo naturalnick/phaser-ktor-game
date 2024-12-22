@@ -141,7 +141,7 @@ data class PlayerPosition(
 @Serializable
 data class EnemyUpdateData(
     val mapId: String,
-    val enemies: List<EnemyPosition>
+    val enemy: EnemyPosition
 )
 
 @Serializable
@@ -192,7 +192,6 @@ class ConnectionManager {
         val newHost = playerPositions.entries
             .firstOrNull { it.value.mapId == mapId && it.key != oldHostId }
             ?.key
-
         if (newHost != null) {
             mapHosts[mapId] = newHost
             val hostMessage = GameMessage.EnemyHost(newHost, mapId)
